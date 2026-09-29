@@ -1,7 +1,8 @@
-## Handoff
-- Goal completed: Phase 1 scaffold — three Client Profile concepts on a shared typed synthetic fixture.
-- Files changed: web/ (new), docs/DECISIONS.md, docs/DESIGN_DECISION.md, docs/HANDOFF.md, docs/screenshots/*
-- Decisions made and why: see DECISIONS.md (Phase 0 skipped provisionally).
-- Checks run and results: tsc, eslint, next build pass; Chrome screenshots at 1440 and 390 wide, no horizontal overflow; one interaction state each. Keyboard/contrast not formally audited; reduced-motion CSS present but untested.
-- Known gaps or risks: no /design-lab, no accessibility audit, no WORKFLOW/PRODUCT docs, no independent critique yet.
-- Exact next task: show concepts to the consultant, fill DESIGN_DECISION.md, run the Phase 0 interview.
+## Handoff — atelier visual iteration
+- Goal: turn the Phase 1 exploration into one coherent luxury-editorial design system and build the screens the brief describes. Synthetic data only; no backend, no new dependencies.
+- Routes: `/` Studio (was concepts index, now `/concepts`), `/clients/marisol` (8-chapter client story), `/wardrobe` (composed contact sheet + detail drawer), `/looks` (look composer + "Ask your consultant"). `/concepts/*` untouched.
+- Design system: tokens and type/motion classes in `web/src/app/globals.css`; primitives in `web/src/components/atelier/` (Reveal, Marker, Label, TextLink, ClientRow, Dots, Garment, PortraitStudy, CompareSlider, SiteNav with ⌘K palette, CursorLabel); data in `web/src/lib/atelier.ts` (extends `fixture.ts`).
+- Decisions worth knowing: Concept A's direction was used as the base — the consultant has NOT chosen yet (`DESIGN_DECISION.md` still pending). Garments and portrait are SVG stand-ins for real photography. Consultant notes are scripted for three occasions (no model call). Before/after is labelled "proposed direction", not a result. Only Marisol has a profile; other client rows are non-links.
+- Checks: `tsc`, `eslint`, `next build` pass; Playwright pass on filter, drawer (Esc + focus return), ⌘K, refinements, palette select, slider keyboard; no horizontal overflow at 1440 and 390; no console errors. Not done: formal contrast/screen-reader audit, Safari, real-device touch.
+- Revert: `git revert <commit>` (or `git checkout d8cde1b -- web/src`); `/` then returns to the concepts index.
+- Next: show to the consultant, record choice in `DESIGN_DECISION.md`, replace SVG stand-ins with consented photography.
