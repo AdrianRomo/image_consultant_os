@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  /* Shared motion tokens (docs plan §4) */
+  --dur-feedback: 150ms;
+  --dur-panel: 260ms;
+  --dur-hero: 500ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-playfair: var(--font-playfair);
+  --font-cormorant: var(--font-cormorant);
+  --font-bricolage: var(--font-bricolage);
+}
+
+body {
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes draw-line {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.anim-fade-up { animation: fade-up var(--dur-hero) var(--ease-out) both; }
+.anim-fade-in { animation: fade-in var(--dur-panel) var(--ease-out) both; }
+.anim-draw { transform-origin: left; animation: draw-line var(--dur-panel) var(--ease-out) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-up, .anim-draw { animation: fade-in var(--dur-feedback) linear both; transform: none; }
+  * { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
