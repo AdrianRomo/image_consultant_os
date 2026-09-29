@@ -27,3 +27,11 @@ No volumes, secrets or backups involved; nothing else was changed.
 - Deployed `atelier-visual-iteration` (PR #2) with `--branch atelier-visual-iteration`; the host checkout is on that branch until you redeploy `main` (default `--branch main`) after merging.
 - Host had an untracked `.env` that made the checkout "dirty"; I added `.env` to `/opt/sandbox/apps/image_consultant_os/.git/info/exclude` (revert: delete that line) and to the repo `.gitignore`. `.env` itself was not read or changed.
 - Roll back to the previous build: redeploy with `--branch main` from before the merge (commit `d8cde1b`).
+
+## 2026-09-29 — temporary public demo via Cloudflare Tunnel
+- `main` (PR #2 merged) is deployed on docker-sandbox; the host checkout is back on `main`.
+- Tunnel connector: container `cloudflared-icos-cloudflared-1`, compose `/opt/sandbox/compose/cloudflared-icos/compose.yml` on the `coolify` network. Token is in `/opt/sandbox/compose/cloudflared-icos/.env` (root-only, 600) — never commit it.
+- Cloudflare dashboard (Zero Trust → Networks → Tunnels): public hostname `icos.thestarrynight.dev` → HTTP → `image-consultant-os-web-1:3000`.
+- The app has no auth. Recommended: a Cloudflare Access policy (one-time PIN, allowed emails) on that hostname while it is public.
+- **Turn off:** `ssh root@192.168.0.213 'docker compose -f /opt/sandbox/compose/cloudflared-icos/compose.yml down'`, then delete the public hostname (and its DNS record) in the dashboard. Optional cleanup: delete the tunnel and `rm -r /opt/sandbox/compose/cloudflared-icos`.
+- The tunnel is outbound-only: no router or firewall changes were made.
