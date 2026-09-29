@@ -22,3 +22,8 @@ ssh root@192.168.0.213 'docker compose -f /opt/sandbox/compose/image-consultant-
 # optional: rm -r /opt/sandbox/compose/image-consultant-os /opt/sandbox/apps/image_consultant_os
 ```
 No volumes, secrets or backups involved; nothing else was changed.
+
+## 2026-09-29 — deployed from PR branch
+- Deployed `atelier-visual-iteration` (PR #2) with `--branch atelier-visual-iteration`; the host checkout is on that branch until you redeploy `main` (default `--branch main`) after merging.
+- Host had an untracked `.env` that made the checkout "dirty"; I added `.env` to `/opt/sandbox/apps/image_consultant_os/.git/info/exclude` (revert: delete that line) and to the repo `.gitignore`. `.env` itself was not read or changed.
+- Roll back to the previous build: redeploy with `--branch main` from before the merge (commit `d8cde1b`).

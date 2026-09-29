@@ -1,11 +1,29 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------------
+   Atelier design system
+   Warm ivory + ink, one restrained accent (cordovan) used only where it
+   carries meaning: "awaiting review", active selection, focus.
+   ------------------------------------------------------------------ */
 :root {
-  /* Shared motion tokens (docs plan §4) */
-  --dur-feedback: 150ms;
-  --dur-panel: 260ms;
-  --dur-hero: 500ms;
+  --ivory: #f5f1e8;
+  --paper: #efe9dc;
+  --stone: #e2dac9;
+  --taupe: #a99b86;
+  --warm-gray: #6b6357; /* 5.2:1 on ivory — safe for small text */
+  --charcoal: #2d2a26;
+  --ink: #171512;
+  --cordovan: #7a3324;
+
+  --dur-feedback: 180ms;
+  --dur-ui: 320ms;
+  --dur-editorial: 800ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --font-display: var(--font-cormorant);
+  --gutter: clamp(1.25rem, 4vw, 3.5rem);
+  --rail: 3.25rem;
 }
 
 @theme inline {
@@ -13,31 +31,132 @@
   --font-playfair: var(--font-playfair);
   --font-cormorant: var(--font-cormorant);
   --font-bricolage: var(--font-bricolage);
+  --color-ivory: var(--ivory);
+  --color-paper: var(--paper);
+  --color-stone: var(--stone);
+  --color-taupe: var(--taupe);
+  --color-warm: var(--warm-gray);
+  --color-charcoal: var(--charcoal);
+  --color-ink: var(--ink);
+  --color-cordovan: var(--cordovan);
 }
 
+html { background: var(--ivory); }
 body {
   font-family: var(--font-inter), system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--ivory);
+  -webkit-font-smoothing: antialiased;
 }
 
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: none; }
+/* Tactile paper: a whisper of grain, fixed behind everything. */
+body::before {
+  content: "";
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  opacity: 0.35; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .45  0 0 0 0 .4  0 0 0 .09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes draw-line {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-.anim-fade-up { animation: fade-up var(--dur-hero) var(--ease-out) both; }
-.anim-fade-in { animation: fade-in var(--dur-panel) var(--ease-out) both; }
-.anim-draw { transform-origin: left; animation: draw-line var(--dur-panel) var(--ease-out) both; }
+body > * { position: relative; z-index: 1; }
+
+::selection { background: var(--ink); color: var(--ivory); }
+
+/* ---------------- Typography scale ---------------- */
+.display-xl { font-family: var(--font-display), serif; font-weight: 300; letter-spacing: -0.02em;
+  line-height: 0.88; font-size: clamp(3.4rem, 9.6vw, 10rem); text-transform: uppercase; }
+.display-l  { font-family: var(--font-display), serif; font-weight: 300; letter-spacing: -0.015em;
+  line-height: 0.95; font-size: clamp(3rem, 9vw, 8rem); }
+.display-m  { font-family: var(--font-display), serif; font-weight: 400; letter-spacing: -0.01em;
+  line-height: 1.02; font-size: clamp(2.1rem, 5vw, 4.25rem); }
+.headline   { font-family: var(--font-display), serif; font-weight: 400; line-height: 1.1;
+  font-size: clamp(1.6rem, 2.6vw, 2.25rem); }
+.statement  { font-family: var(--font-display), serif; font-weight: 300; font-style: italic; line-height: 1.12;
+  font-size: clamp(1.9rem, 4.2vw, 3.5rem); letter-spacing: -0.005em; }
+.lede       { font-size: clamp(1rem, 1.3vw, 1.15rem); line-height: 1.65; color: var(--charcoal); max-width: 34ch; }
+.body-copy  { font-size: 0.95rem; line-height: 1.7; color: var(--charcoal); max-width: 52ch; }
+.label      { font-size: 0.6875rem; line-height: 1.4; letter-spacing: 0.22em; text-transform: uppercase; font-weight: 500; }
+.meta       { font-size: 0.8125rem; line-height: 1.5; color: var(--warm-gray); }
+.numeral    { font-family: var(--font-display), serif; font-style: italic; font-weight: 300; font-feature-settings: "lnum"; }
+.italic-serif { font-family: var(--font-display), serif; font-style: italic; }
+
+.text-warm { color: var(--warm-gray); }
+
+/* Underline that travels across on hover */
+.travel { background-image: linear-gradient(currentColor, currentColor); background-repeat: no-repeat;
+  background-size: 0% 1px; background-position: 100% 100%; transition: background-size var(--dur-ui) var(--ease-out); }
+.travel:hover, .travel:focus-visible, a:hover .travel, button:hover .travel, .group:hover .travel, .group:focus-visible .travel {
+  background-size: 100% 1px; background-position: 0 100%; }
+.travel-static { background-size: 100% 1px; background-position: 0 100%; }
+
+/* ---------------- Motion ---------------- */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes settle { from { opacity: 0; transform: translateY(-14px) rotate(-1.2deg); } to { opacity: 1; transform: none; } }
+@keyframes draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes mask-up { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes curtain { 0% { opacity: 0; } 25% { opacity: 1; } 65% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes numeral-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+.rise    { animation: rise var(--dur-editorial) var(--ease-out) both; animation-delay: var(--d, 0ms); }
+.fade    { animation: fade var(--dur-ui) var(--ease-out) both; animation-delay: var(--d, 0ms); }
+.settle  { animation: settle 520ms var(--ease-out) both; }
+.drawn   { transform-origin: left; animation: draw var(--dur-editorial) var(--ease-out) both; animation-delay: var(--d, 0ms); }
+
+/* Scroll reveal: elements start hidden only when JS has marked the page. */
+.js .reveal { opacity: 0; transform: translateY(14px);
+  transition: opacity var(--dur-editorial) var(--ease-out), transform var(--dur-editorial) var(--ease-out);
+  transition-delay: var(--d, 0ms); }
+.js .reveal.in { opacity: 1; transform: none; }
+.js .reveal-mask { clip-path: inset(100% 0 0 0); transition: clip-path 1100ms var(--ease-out); transition-delay: var(--d, 0ms); }
+.js .reveal-mask.in { clip-path: inset(0 0 0 0); }
+
+/* Images: crop drifts on hover, never a large scale */
+.frame { overflow: hidden; }
+.frame > .frame-inner { transition: transform 900ms var(--ease-out); transform-origin: 50% 40%; }
+a:hover .frame > .frame-inner, .group:hover .frame > .frame-inner, .group:focus-visible .frame > .frame-inner { transform: scale(1.03) translateY(-1%); }
+
+/* Page transition: a quiet chapter numeral, never blocks input */
+.page-curtain { position: fixed; inset: 0; z-index: 60; pointer-events: none; background: var(--ivory);
+  display: grid; place-items: center; animation: curtain 900ms var(--ease-soft) both; }
+.page-curtain > div { animation: numeral-in 500ms var(--ease-out) 60ms both; text-align: center; }
+.page-enter { animation: rise 700ms var(--ease-out) 120ms both; }
+
+/* Buttons keep a moderate radius; never pills */
+.btn { display: inline-flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; padding: 0 1.25rem;
+  border: 1px solid var(--ink); border-radius: 3px; background: transparent; color: var(--ink);
+  transition: background var(--dur-feedback) var(--ease-soft), color var(--dur-feedback) var(--ease-soft); cursor: pointer; }
+.btn:hover { background: var(--ink); color: var(--ivory); }
+.btn-solid { background: var(--ink); color: var(--ivory); }
+.btn-solid:hover { background: var(--charcoal); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Reveal slider: native range input laid over the image, so drag + keys just work */
+.compare-range { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
+.compare-wrap:focus-within .compare-handle { outline: 2px solid var(--cordovan); outline-offset: 3px; }
+
+/* Cursor label */
+.cursor-label { position: fixed; z-index: 70; pointer-events: none; left: 0; top: 0;
+  transition: opacity var(--dur-feedback) var(--ease-soft); }
+
+dialog::backdrop { background: rgba(23, 21, 18, 0.38); }
+
+/* Focus: visible, quiet */
+:focus-visible { outline: 1.5px solid var(--cordovan); outline-offset: 4px; border-radius: 2px; }
+.on-dark :focus-visible { outline-color: var(--ivory); }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-fade-up, .anim-draw { animation: fade-in var(--dur-feedback) linear both; transform: none; }
-  * { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  .rise, .fade, .settle, .drawn, .page-enter { animation: fade 150ms linear both; animation-delay: 0ms; }
+  .page-curtain { display: none; }
+  .js .reveal, .js .reveal-mask { opacity: 1; transform: none; clip-path: none; transition: none; }
+  .frame > .frame-inner { transition: none; transform: none !important; }
+  * { scroll-behavior: auto !important; }
 }
 
-:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+@media (max-width: 639px) { .display-xl { font-size: 14.6vw; } }
+
+/* Legacy classes used by the Phase 1 concept pages (/concepts/*) */
+.anim-fade-up { animation: rise var(--dur-editorial) var(--ease-out) both; }
+.anim-fade-in { animation: fade var(--dur-ui) var(--ease-out) both; }
+.anim-draw { transform-origin: left; animation: draw var(--dur-ui) var(--ease-out) both; }
