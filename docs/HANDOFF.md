@@ -7,13 +7,11 @@
 - **Exact next task:** show `/clients/marisol` and `/design-lab` to the consultant and record her choice in `DESIGN_DECISION.md`; then run Phase 0 (`WORKFLOW.md`, `PRODUCT.md`). When a real client is consented, follow `IMAGE_CREDITS.md` ("Replacing them with a real client") and re-tune `observationMarkers` in `lib/atelier.ts`.
 
 ### Runbook: what changed and how to revert
-- **State:** everything is on branch `visual-elevation-pass` (from `docs-cloudflare-tunnel`), **uncommitted**. Nothing was deployed; the public demo at `icos.thestarrynight.dev` still serves the previous build.
+- **State (2026-09-30):** merged to `main` as PR #4 (`c31371d`) and deployed to the sandbox (`https://icos.sandbox.thestarrynight.dev`), verified route by route. Details, the public-hostname problem and the rollback are in `DEPLOY.md` ("2026-09-30").
+- **The public hostname `icos.thestarrynight.dev` currently returns 404 and needs a Cloudflare DNS/route check**; the app and the tunnel connector are healthy. See `DEPLOY.md`.
 - **Look at it locally:** `cd web && npm run build && npx next start -p 3100` (port 3000 is used by another service on this machine).
-- **Keep it:** review with `git diff --stat`, then commit on this branch.
-- **Set it aside (recoverable):** `git stash push -u -m visual-elevation-pass`, then `git stash pop` to bring it back.
-- **Discard it entirely (destructive; run only if you mean it):** `git restore --staged --worktree web docs/HANDOFF.md docs/DECISIONS.md && git clean -fd web/src docs/audit docs/DESIGN.md docs/VISUAL_AUDIT.md`.
-- **After a commit:** `git revert <commit>`.
-- **To publish later:** merge, then redeploy as in `DEPLOY.md` ("Redeploy after a push"). Rollback there is unchanged: redeploy the previous commit.
+- **Revert:** revert PR #4 on GitHub, merge the revert PR, then redeploy `main` as in `DEPLOY.md`. Local file-level revert: `git revert c31371d -m 1`.
+- **To redeploy later:** always `--branch main`; feature branches are deleted on merge.
 
 ---
 
