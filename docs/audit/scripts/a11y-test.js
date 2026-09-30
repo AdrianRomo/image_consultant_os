@@ -46,12 +46,13 @@ const ok = (name, pass, detail = "") => { results.push({ name, pass }); console.
   await p.evaluate(() => document.getElementById("opportunities").scrollIntoView());
   await p.click("#rec-rec-1 button[aria-expanded]");
   await p.waitForTimeout(400);
-  const exp = await p.evaluate(() => ({ e: document.querySelector("#rec-rec-1 button[aria-expanded]").getAttribute("aria-expanded"), inert: document.querySelector("#rec-body-rec-1 [inert]") !== null }));
+  const exp = await p.evaluate(() => ({ e: document.querySelector("#rec-rec-1 button[aria-expanded]").getAttribute("aria-expanded"), inert: document.querySelector("#rec-body-rec-1 > [inert]") !== null }));
+  // The row's own disclosure container (a direct child): a nested comparison panel is rightly inert while collapsed.
   ok("recommendation expands and un-inerts", exp.e === "true" && !exp.inert, JSON.stringify(exp));
   await p.click("button[aria-pressed]:has-text('The board')");
   await p.waitForTimeout(200);
-  const rows = await p.evaluate(() => [...document.querySelectorAll("#opportunities ol > li")].length);
-  ok("audience filter shows only the board's recommendations (2)", rows === 2, `rows=${rows}`);
+  const rows = await p.evaluate(() => [...document.querySelectorAll("#opportunities > ol > li")].length);
+  ok("audience filter shows only the board's recommendations (3)", rows === 3, `rows=${rows}`);
 
   // 5. palette: opens with Ctrl+K, Esc closes and returns focus, Enter navigates
   await p.click("button[aria-label='Open search and commands']");
@@ -115,7 +116,7 @@ const ok = (name, pass, detail = "") => { results.push({ name, pass }); console.
   await p.context().close();
 
   // ---------- semantics on every page: one h1, landmarks, alt/labels
-  for (const r of ["/", "/clients/marisol", "/wardrobe", "/looks", "/design-lab"]) {
+  for (const r of ["/", "/clients/marisol", "/clients/marisol/preview", "/share/marisol", "/share/nobody", "/wardrobe", "/looks", "/design-lab"]) {
     p = await L.newPage(b, { w: 1440, h: 900 });
     await L.go(p, base + r, 500);
     const s = await p.evaluate(() => ({

@@ -21,3 +21,11 @@ node a11y-test.js    http://localhost:3100                   # 25 behavioural + 
 node console-scan.js http://localhost:3100                   # console and hydration errors per route
 node slice-cli.js /tmp/shots/x.png <W> <H> <sliceH> [cols]   # slices or contact sheets of a full-page capture
 ```
+
+## Workflow, client view and supporting states (second iteration)
+
+- `workflow/` holds the review images for this iteration (1440 and 390): the Studio's Today, the recommendation list and rows (approved and shared with the comparison open, awaiting review, the share confirmation), the client's page and the consultant's preview, empty and 404 states, the wardrobe drawer with its relations, the look with its pieces, and the lab sections in Spanish. Regenerate with `scripts/workflow-states.js`.
+- `scripts/workflow-e2e.js <base>` drives the whole workflow through the real UI (39 checks: valid states only, the client's page after every step, a stale window refused, keyboard, focus, phone overflow). Run it against a fresh server; state is in memory.
+- `scripts/share-boundary.js <base> [--after-share]` loads the client's page in a browser, records everything the server sends (HTML, RSC data, every script) and searches it for private strings. It scans the consultant's dossier as a positive control, so a blind scan cannot pass. `--after-share` first approves and shares every recommendation through the UI.
+- `a11y-test.js` now expects three board recommendations and checks the client page, the preview and the client's 404 for structure.
+- Reproduce: build and serve as above, restart the server before each script that mutates state, then `NODE_PATH=/usr/share/nodejs node scripts/<name>.js http://localhost:3100 [outDir]`.

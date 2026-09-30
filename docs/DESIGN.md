@@ -81,13 +81,15 @@ All controls are native elements restyled once; there is no component library an
 | Field, TextArea, SelectField | `ui/controls.tsx` | Underline fields. Hint, error (announced, glyph `!`), success (glyph `✓`). `hideLabel` keeps a real label |
 | Filter | `ui/controls.tsx` | A group of toggle buttons that changes what a region shows |
 | Tabs | `ui/controls.tsx` | Real tabs: arrow keys, Home, End; activation follows focus |
-| Status | `ui/controls.tsx` | Glyph **and** words. Never colour alone, at any width |
+| Status | `ui/controls.tsx` | Glyph **and** words. Never colour alone, at any width. Circles and a tick say *where a recommendation is*; squares say *who can see it* |
 | Skeleton, EmptyState, Notice | `ui/controls.tsx` | Skeletons are still, on purpose |
 | Drawer, Sheet, Curtain | `ui/Overlay.tsx` | Native `<dialog>`: modal, Esc, focus trap and return |
 | Portrait, PortraitPlaceholder | `Portrait.tsx` | Photographs from `lib/photos.ts`; ratios, finish, view-transition hook |
 | Marker, Label, TextLink, Spectrum, Reveal | `primitives.tsx` | `Spectrum` replaces rating dots: a position between two poles |
 | AnnotatedPortrait, FocusWindow, ObservationList | `dossier/Assessment.tsx` | Expert observation, not a form. The window is the phone version of the portrait |
-| RecommendationRow | `dossier/Recommendations.tsx` | Editorial rows, expandable rationale |
+| RecommendationRow | `dossier/Recommendations.tsx` | Editorial rows, expandable rationale, private note, earlier-versus-current comparison, and (in the dossier) the actions that move it on |
+| StatusPair, RecommendationSummary, VersionCompare | `dossier/Recommendations.tsx` | The two questions as two signals; one quiet sentence above the list; the earlier and current wording side by side |
+| ClientPresentation, SharedRecommendationRow | `components/share/` | The page a client opens. Renders a `ClientView` and nothing else: no controls, no status words, no navigation |
 | Connector | `dossier/Connector.tsx` | Marker-to-note line |
 | ClientNav | `dossier/ClientNav.tsx` | Client context header, chapter rail, chapter picker |
 | SiteNav, CommandPalette | `SiteNav.tsx`, `CommandPalette.tsx` | The shell that recedes; ⌘K |
@@ -112,11 +114,26 @@ Each chapter has an editorial title and a plain name the consultant would search
 
 **The stage.** From 03 through 04 one portrait stays in place while the notes and the advice move past it. Markers are buttons. On wide screens a fine line runs from the selected marker to its note, and from a recommendation to the observation that motivated it. **On phones** the picture cannot sit beside the notes, so a 2:1 window of it sticks under the header and pans and zooms (520ms) to whichever observation is open.
 
-**Recommendations** are numbered editorial rows: priority, audience and status as a quiet line; the sentence; the next action; and, on opening, why, the observation it answers and the part of her desired perception it serves. Sorted by priority. Status is secondary.
+**Recommendations** are numbered editorial rows: two quiet signals (below), priority and audience; the sentence; the next action; and, on opening, why, the observation it answers, the part of her desired perception it serves, the consultant's private note, an earlier-versus-current comparison when there is one, and the actions that move it on. Sorted by priority. A link such as `/clients/marisol#rec-rec-3` (from the Studio, the wardrobe, search) lands on the row opened with its observation lit on the portrait: the person, the observation and the recommendation stay connected.
+
+### Workflow and the client's view
+
+Two questions, always answered apart and never in the same words as the *audiences* (the board, the team):
+
+| Question | Values | Shape | Words |
+| --- | --- | --- | --- |
+| Where is it? (workflow) | Draft → Awaiting review → Approved | circle, filled circle, tick | Draft, Awaiting review, Approved |
+| Who can see it? (visibility) | Consultant only, Shared with the client | hollow square, solid square | Consultant only, Shared with Marisol |
+
+One rule ties them: **only an approved recommendation can be shared**, and `lib/workflow.ts` makes anything else impossible (tests enumerate every state and action). Approving does not share; sharing is a separate, confirmed step (a sheet that says what the client will and will not see); a shared recommendation is withdrawn before it can be reopened, so pulling something back from a client is never a side effect. Buttons say what they do and, under the primary one, what follows from it. A change is announced in a live region and focus moves to it.
+
+**What a client can see** is built, not filtered: `toClientView` (`lib/share.ts`) returns a new object from a whitelist of fields of the approved-and-shared recommendations. Private notes, drafts, session notes, the action-plan draft, observations and other clients are never passed in, so they cannot be hidden by a CSS rule that fails, because they are never sent (`docs/audit/scripts/share-boundary.js` checks the HTML, the RSC data and every script). The client's own numbering is contiguous, so a gap cannot reveal a hidden item. The consultant previews the same component with the same object at `/clients/marisol/preview`; the only difference is a bar outside the presentation that shows counts, never titles. The client's page lives in the `(share)` route group, which has none of the studio's chrome (its ⌘K search lists every client).
+
+**Earlier and current** is a comparison of *wording* between two versions of one recommendation, each labelled with its version, date and state, with a line saying so. It never says or implies a result. Looks and the client's direction have no history in the data, so they have no comparison.
 
 ## 5. Navigation
 
-The software shell recedes: solid ground, one hairline once you scroll, **no blur, no gradient**. Outside a client: wordmark, four places, search (a one-row header with a full-screen menu on phones). **Inside a client the client is the context**: one way back, her name, a chapter rail of numerals at ≥ 1024px (the name appears on hover or focus), a native chapter picker below that, and search. Chapters end in a quiet hand-off to the next.
+The software shell recedes: solid ground, one hairline once you scroll, **no blur, no gradient**. Outside a client: wordmark, four places, search (a one-row header with a full-screen menu on phones). **Inside a client the client is the context**: one way back, her name, a chapter rail of numerals at ≥ 1024px (the name appears on hover or focus), a native chapter picker below that, and search. Chapters end in a quiet hand-off to the next. A client's own page (`/share/…`) has no shell at all.
 
 ## 6. Signature interactions
 
@@ -134,6 +151,8 @@ Five, deliberately. Each works without motion.
 - Touch targets are ≥ 44px on coarse pointers. Small visual targets (markers, header links) grow an invisible hit area with `.hit`.
 - Collapsed disclosures are `inert`. Overlays are native dialogs. Forms have real labels; errors are announced and tied to their field.
 - Portraits have alternatives; decorative crops are hidden. One `h1` per page.
+- Feedback is a short title and, if needed, one sentence (`Notice`): titles sit in a no-wrap status label, so a whole sentence in one overflows a phone. After a change, focus lands on the panel that announces it; a dialog returns focus to the button that opened it; a closed row's controls are `inert`.
+- Spanish and long text are exercised in `/design-lab` (Patterns, Client view) at 390px, not assumed.
 - Verified by `docs/audit/scripts/a11y-test.js` (25 checks), the production build and `next dev` (no warnings), and a run with the View Transitions API removed (navigation and back still work). Not yet done: a screen-reader pass, real Safari and Firefox (only Playwright's 2023 builds are available here, which cannot say anything about current engines), real-device touch.
 
 ## 8. Implementation rules (learned the hard way)
@@ -144,6 +163,11 @@ Five, deliberately. Each works without motion.
 - React's `<ViewTransition>` only names an element that animates. To layer an element above a morph, give it a plain `view-transition-name` and define its pseudo-element animations in CSS.
 - `error.tsx` receives `retry`. Check `web/node_modules/next/dist/docs/` before using a Next API from memory (`web/AGENTS.md`).
 - Photographs are plain `<img>` with a pre-built `srcset` (`lib/photos.ts`): assets are already cropped, graded and sized, so no runtime optimiser is needed and the standalone build stays small.
+- **Route groups.** `(studio)` carries the consultant's chrome; `(share)` carries none. Anything a client can open belongs in `(share)`, never under `(studio)`.
+- **`not-found.tsx` at the root is included in the data of every page**, so it must be safe for a client to receive: neutral, no studio header, no client names, no links into the studio.
+- **A page checks its own slug before it reads any data.** Next renders a page and its layouts side by side, so relying on a layout's `notFound()` still puts the page's data in a 404 response. The layout check only makes the status a real 404.
+- **Server Actions are public POST endpoints.** Validate every argument, take only a reference and the caller's belief about the current state, refuse a stale request, and return only what the page needs to say what happened.
+- **Size a name to its column**, not to the viewport (`cqw` on a container): a long first name scales down instead of breaking mid-word.
 - Do not add scroll-triggered animation, decorative blur, a second radius or a colour for decoration.
 
 ## 9. Quality tests (used to judge this iteration)
