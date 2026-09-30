@@ -8,6 +8,8 @@ export type Observation = {
   detail: string;
   // Position of the portrait marker, in % of the 4:5 portrait frame.
   marker: { x: number; y: number };
+  // Consultant attribution: when and where this was noted.
+  noted: string;
 };
 export type Recommendation = {
   id: string;
@@ -18,6 +20,8 @@ export type Recommendation = {
   priority: "High" | "Medium" | "Low";
   status: "Approved" | "Draft";
   nextStep: string;
+  // Which part of the desired perception this serves.
+  serves: string;
 };
 export type ClientProfile = {
   name: string;
@@ -25,6 +29,10 @@ export type ClientProfile = {
   location: string;
   engagement: string;
   desiredPerception: string;
+  // How she reads today, and how she wants to read. The difference is the engagement.
+  traits: { now: string[]; wanted: string[] };
+  // Her own words, from intake. Synthetic.
+  inHerWords: { quote: string; source: string };
   audiences: Audience[];
   observations: Observation[];
   recommendations: Recommendation[];
@@ -39,6 +47,11 @@ export const client: ClientProfile = {
   engagement: "Executive presence · 8 weeks",
   desiredPerception:
     "Decisive and warm. Someone the board trusts with hard calls and the team trusts to hear them out.",
+  traits: { now: ["Composed", "Warm"], wanted: ["Decisive", "Warm"] },
+  inHerWords: {
+    quote: "I don’t need to be more intimidating. I need them to stop asking whether I’m sure.",
+    source: "Intake conversation, 3 March",
+  },
   audiences: [
     {
       id: "aud-board",
@@ -59,6 +72,7 @@ export const client: ClientProfile = {
       detail:
         "Unstructured shoulder and low-contrast neutrals blur the silhouette on camera and in a boardroom.",
       marker: { x: 50, y: 42 },
+      noted: "Session 1 · 5 March",
     },
     {
       id: "obs-2",
@@ -67,6 +81,7 @@ export const client: ClientProfile = {
       detail:
         "When questioned, hands move out of view and pace quickens; the warmth of the opening is lost.",
       marker: { x: 38, y: 68 },
+      noted: "Session 2 · 12 March",
     },
     {
       id: "obs-3",
@@ -75,6 +90,7 @@ export const client: ClientProfile = {
       detail:
         "Cropped snapshot, flat light, and a headline that lists tasks rather than scope of responsibility.",
       marker: { x: 52, y: 20 },
+      noted: "Session 1 · 5 March",
     },
   ],
   recommendations: [
@@ -87,6 +103,7 @@ export const client: ClientProfile = {
       priority: "High",
       status: "Approved",
       nextStep: "Two fittings booked before the March board meeting.",
+      serves: "Decisive",
     },
     {
       id: "rec-2",
@@ -97,6 +114,7 @@ export const client: ClientProfile = {
       priority: "High",
       status: "Approved",
       nextStep: "Rehearse three challenge questions on camera, week 3.",
+      serves: "Decisive",
     },
     {
       id: "rec-3",
@@ -107,6 +125,7 @@ export const client: ClientProfile = {
       priority: "Medium",
       status: "Draft",
       nextStep: "Draft three opening lines for review.",
+      serves: "Warm",
     },
     {
       id: "rec-4",
@@ -116,6 +135,7 @@ export const client: ClientProfile = {
       priority: "Medium",
       status: "Approved",
       nextStep: "Photographer shortlist by Friday.",
+      serves: "Decisive",
     },
   ],
   session: {

@@ -99,10 +99,11 @@ export const categories: ("All" | Category)[] = ["All", "Outerwear", "Tops", "Tr
 export const season = {
   name: "Autumn",
   qualifier: "Soft",
+  // Positions on a spectrum, not scores: each has two poles.
   measures: [
-    { label: "warmth", value: 4 },
-    { label: "contrast", value: 2 },
-    { label: "saturation", value: 3 },
+    { label: "Warmth", value: 4, low: "Cool", high: "Warm" },
+    { label: "Contrast", value: 2, low: "Soft", high: "Sharp" },
+    { label: "Saturation", value: 3, low: "Muted", high: "Rich" },
   ],
   colors: [
     { id: "olive", name: "Olive", hex: "#5d6238", role: "Anchor",
@@ -143,16 +144,18 @@ export const silhouette = {
 export type StudioClient = {
   slug: string;
   name: string;
+  initials: string;
   focus: string;
   last: string;
   status?: "Analysis ready" | "Draft to review";
   href?: string;
+  hasPortrait: boolean;
 };
 
 export const studioClients: StudioClient[] = [
-  { slug: "marisol", name: "Marisol Vega Ortiz", focus: "Executive presence", last: "Last session · 2 days ago", status: "Draft to review", href: "/clients/marisol" },
-  { slug: "lucia", name: "Lucía Herrera", focus: "Wardrobe refinement", last: "Last session · 6 days ago" },
-  { slug: "diego", name: "Diego Flores", focus: "Personal branding", last: "Analysis ready", status: "Analysis ready" },
+  { slug: "marisol", name: "Marisol Vega Ortiz", initials: "MV", focus: "Executive presence", last: "Last session · 2 days ago", status: "Draft to review", href: "/clients/marisol", hasPortrait: true },
+  { slug: "lucia", name: "Lucía Herrera", initials: "LH", focus: "Wardrobe refinement", last: "Last session · 6 days ago", hasPortrait: false },
+  { slug: "diego", name: "Diego Flores", initials: "DF", focus: "Personal branding", last: "Observations complete", status: "Analysis ready", hasPortrait: false },
 ];
 
 export const upcoming = [
@@ -252,3 +255,29 @@ export function shade(hex: string, amt: number) {
   const r = f((n >> 16) & 255), g = f((n >> 8) & 255), b = f(n & 255);
   return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
 }
+
+// ---------------------------------------------------------------- Client dossier structure
+
+// The client story is read in four movements. `sub` is the plain-language name a consultant
+// would search for; the chapter title is the editorial one.
+export const chapters = [
+  { id: "identity", n: "01", label: "Identity", sub: "Client" },
+  { id: "presence", n: "02", label: "Presence", sub: "Strategy" },
+  { id: "assessment", n: "03", label: "Assessment", sub: "Observations" },
+  { id: "opportunities", n: "04", label: "Opportunities", sub: "Recommendations" },
+  { id: "colour", n: "05", label: "Colour", sub: "Palette" },
+  { id: "silhouette", n: "06", label: "Silhouette", sub: "Line" },
+  { id: "wardrobe", n: "07", label: "Wardrobe", sub: "Pieces" },
+  { id: "looks", n: "08", label: "Looks", sub: "Occasions" },
+  { id: "evolution", n: "09", label: "Evolution", sub: "Sessions and plan" },
+] as const;
+export type ChapterId = (typeof chapters)[number]["id"];
+
+// Marker positions on the portrait, in % of the 4:5 frame of the "today" photograph. They are tuned to that
+// photograph: obs-1 sits on the cardigan where it slips off the shoulder, obs-2 on the lower frame edge on
+// purpose (her hands are out of view), obs-3 on the hair. Re-tune them when the photograph changes.
+export const observationMarkers: Record<string, { x: number; y: number }> = {
+  "obs-1": { x: 71, y: 56 },
+  "obs-2": { x: 46, y: 95 },
+  "obs-3": { x: 45, y: 17 },
+};
