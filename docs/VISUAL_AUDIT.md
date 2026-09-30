@@ -368,3 +368,52 @@ Plainly:
 - **Identity.** No SaaS product has an interlocking name, a perception gap set as type, or a line from the picture to the note. The hairline chapter marker and the dark closing band are the parts most like anything else.
 - **Luxury.** Quality comes from type, proportion, photography treatment, whitespace and craft; there are no shadows or gradients on the page.
 - **Consultant.** The workflow is legible without explanation: plain names sit beside every editorial chapter title, priority and next action are on every row, and status has words. Not yet tested with the consultant herself.
+
+---
+
+# Second audit: workflow, the client's view, Studio at a glance
+
+Built on branch `studio-workflow-client-view` from `main` at `29beb20`. The comparison baseline is the previous pass (`audit/after/`) and, for pixel-level regressions, a build of that commit served next to this one (`pixdiff.js`). New screenshots are in `audit/workflow/` (regenerate with `scripts/workflow-states.js`). Widths inspected: 1440, 1024, 768, 390.
+
+## Regression check against the previous pass
+
+| Check | Result |
+| --- | --- |
+| `/wardrobe` and `/concepts` at 1440, pixel diff against the previous build | **identical** (0 differing pixels): moving the routes into route groups and the chrome into a group layout changed nothing visible |
+| Horizontal overflow, 1440 / 1024 / 768 / 390, every route | **none**. Two overflows were introduced while building and fixed: a no-wrap status label holding a whole sentence (a phone), and the lab's status grid (768 and 390) |
+| Console errors | none, apart from the intentional 404 status line |
+| Targets, headings, landmarks, focus (`a11y-test.js`) | 28 of 28, now including the client page, the preview and the client's 404 |
+| Studio hero composition | unchanged; its one hard-coded link block is now derived from the records (same footprint) |
+| Client dossier, chapters other than Opportunities | not edited (Assessment gained an `id` and a data attribute, nothing visual). Not pixel-compared: the page is taller now because Opportunities is, so `pixdiff.js` cannot align the two. The first screen was inspected at 1440 and 390 |
+
+## What changed on screens that already existed
+
+| Screen | Before (`audit/after/`) | Now (`audit/workflow/`) |
+| --- | --- | --- |
+| Studio, "This week" | Hard-coded lists; `Draft · Visual` labels; a "Continue with Marisol" link with a typed-in date | **Today in the studio**, derived: the item that is the next action leads with a strong rule and "Start here"; appointments nearest first with days to go; nothing listed twice. `studio-today-1440.jpg`, `studio-today-390.jpg`, and with nothing waiting `studio-nothing-waiting-1440.jpg` |
+| Recommendations | Priority, audience and one status word on a line | Two signals in two shapes (workflow: circles and a tick; visibility: squares), each with words; a summary sentence and the preview link above the list. `rec-list-closed-1440.jpg`, `rec-list-closed-390.jpg` |
+| An open recommendation | Why, because, serves | Adds the private note (ruled and labelled "never shown to Marisol"), the earlier-versus-current comparison, the actions with what each does, and the dated record. `rec-shared-compare-1440.jpg`, `rec-review-deeplink-1440.jpg`, `rec-review-deeplink-390.jpg` |
+| Sharing | none | A confirmation sheet that says what the client will not see. `share-confirm-390.jpg` |
+| Wardrobe drawer | Plate, note, structure, palette | Adds a true-colour chip with its nearest palette colour, where the piece is worn, what it is worn with, and the advice it belongs to (or the observation about it). `wardrobe-w-ink-blazer-1440.jpg`, `wardrobe-w-grey-cardigan-390.jpg` |
+| Looks | The canvas and the notes | Adds "In this look": each piece by name, its colour and palette standing, and a link to it; a saved look shows its occasion. `looks-board-1440.jpg`, `looks-board-390.jpg` |
+| Design lab | 13 sections | 14: a new **Client view** section, the workflow live in Patterns (English and Spanish, typical and long), new empty, stale and busy states. `lab-client-view-es-1440.jpg`, `lab-patterns-es-long-390.jpg`, `lab-states-1440.jpg` |
+| Unmatched URL | Studio header and links | A neutral, chrome-free 404 (the root not-found is sent inside every page, so it must be safe for a client). `404-1440.jpg`. A missing client link has its own. `share-404-390.jpg` |
+
+New, with no before: the client's page (`share-fold-1440.jpg`, `share-fold-390.jpg`, and with nothing shared `share-empty-390.jpg`) and the consultant's preview (`preview-fold-1440.jpg`, `preview-fold-390.jpg`, `preview-empty-1440.jpg`).
+
+## Defects found in this pass, and fixed
+
+- A 404 for an unknown client link still carried a client's recommendations in its data, because a page renders beside its layout. The page now checks its slug before reading anything.
+- The studio's 404 was included in the client's page data (with the ⌘K search component). The root 404 is now neutral and chrome-free.
+- A deep link to a recommendation landed under the phone's sticky photograph window; the scroll now clears whatever is stuck to the top.
+- The client's name broke mid-word ("MARIS / OL"); it is now sized to its column.
+- A message could say "Sent for review" beside a row that still said "Draft"; both now land in one commit.
+- "Near olive" for cognac loafers came from comparing RGB channels; nearness is now measured in CIELAB (cognac is near rust).
+- "In 1 / look" wrapped mid-phrase in the phone wardrobe; it now wraps as a unit.
+- The Today sentence read "No recommendation is waiting… One more is still in draft."; rewritten for every combination.
+
+## Still true
+
+- The photographs are stock examples, not a client; the client's page shows one of them. Whether stock faces should appear outside your circle is still open (`IMAGE_CREDITS.md`).
+- Garments are vector illustrations. No garment photography exists in the repo, so none was added.
+- Not tested: a screen reader, real Safari and Firefox, real touch hardware.

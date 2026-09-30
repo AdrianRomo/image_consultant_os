@@ -33,12 +33,14 @@ export function ButtonLink({
 
 /* ---------------- Status ----------------
    Meaning is never carried by colour alone: every status has a glyph shape and words. */
-export type StatusTone = "review" | "draft" | "approved" | "published" | "success" | "error" | "neutral";
+export type StatusTone = "review" | "draft" | "approved" | "published" | "private" | "success" | "error" | "neutral";
 const tones: Record<StatusTone, { cls: string; glyph: ReactNode }> = {
   review: { cls: "tone-accent", glyph: <circle cx="5" cy="5" r="3" fill="currentColor" /> },
   draft: { cls: "tone-muted", glyph: <circle cx="5" cy="5" r="2.6" fill="none" stroke="currentColor" strokeWidth="1.2" /> },
   approved: { cls: "tone-positive", glyph: <path d="M1.5 5.4 4 7.8 8.6 2.4" fill="none" stroke="currentColor" strokeWidth="1.4" /> },
+  // Workflow states are circles and a tick; who-can-see-it states are squares. Shapes differ as well as words.
   published: { cls: "tone-ink", glyph: <rect x="2" y="2" width="6" height="6" fill="currentColor" /> },
+  private: { cls: "tone-muted", glyph: <rect x="2.6" y="2.6" width="4.8" height="4.8" fill="none" stroke="currentColor" strokeWidth="1.2" /> },
   success: { cls: "tone-positive", glyph: <path d="M1.5 5.4 4 7.8 8.6 2.4" fill="none" stroke="currentColor" strokeWidth="1.4" /> },
   error: { cls: "tone-accent", glyph: <path d="M5 1.6v4M5 7.6v.6" fill="none" stroke="currentColor" strokeWidth="1.6" /> },
   neutral: { cls: "tone-muted", glyph: null },

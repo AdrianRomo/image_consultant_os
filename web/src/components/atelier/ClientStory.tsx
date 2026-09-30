@@ -1,7 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
-import { client, audById, obsById } from "@/lib/fixture";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { client, audById, obsById, type Recommendation } from "@/lib/fixture";
+import { copy, type Msg } from "@/lib/copy";
+import { sortByPriority, type Action } from "@/lib/workflow";
+import { moveRecommendation } from "@/app/(studio)/clients/marisol/actions";
 import { chapters, identity, observationMarkers, itemById, looks, season, silhouette, wardrobe } from "@/lib/atelier";
 import { photoCreditLine } from "@/lib/photos";
 import { CompareSlider } from "./CompareSlider";
@@ -11,8 +14,8 @@ import { Label, Marker, Reveal, Spectrum, TextLink } from "./primitives";
 import { AnnotatedPortrait, FocusWindow, ObservationList } from "./dossier/Assessment";
 import { ClientNav } from "./dossier/ClientNav";
 import { Connector } from "./dossier/Connector";
-import { RecommendationRow, sortRecommendations } from "./dossier/Recommendations";
-import { Filter, SelectField } from "./ui/controls";
+import { RecommendationRow, RecommendationSummary, type Feedback, type Workflow } from "./dossier/Recommendations";
+import { EmptyState, Filter, SelectField } from "./ui/controls";
 
 const ch = (id: string) => chapters.find((c) => c.id === id)!;
 
@@ -29,18 +32,36 @@ function Onward({ to, className = "" }: { to: string; className?: string }) {
   );
 }
 
-export function ClientStory() {
+const subscribeHash = (cb: () => void) => { window.addEventListener("hashchange", cb); return () => window.removeEventListener("hashchange", cb); };
+// #rec-rec-3 opens a recommendation; #observation-obs-1 shows an observation. Anything else is left to the browser.
+type Target = { rec?: Recommendation; observationId: string };
+const targetFromHash = (hash: string, recs: readonly Recommendation[]): Target | undefined => {
+  const r = /^#rec-(.+)$/.exec(hash);
+  if (r) { const rec = recs.find((x) => x.id === decodeURIComponent(r[1])); return rec && { rec, observationId: rec.observationId }; }
+  const o = /^#observation-(.+)$/.exec(hash);
+  if (o) { const id = decodeURIComponent(o[1]); return client.observations.some((x) => x.id === id) ? { observationId: id } : undefined; }
+  return undefined;
+};
+
+/** `recommendations` are the live records from the server: their status and visibility change when the consultant acts. */
+export function ClientStory({ recommendations }: { recommendations: Recommendation[] }) {
   const [sel, setSel] = useState<string>(client.observations[0].id); // the observation the portrait is showing
   const [openRec, setOpenRec] = useState<string | null>(null);
   const [audience, setAudience] = useState<string>("all");
   const [colour, setColour] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [pendingAction, setPendingAction] = useState<Action | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const nonce = useRef(0);
+  const t = copy.en;
 
   const chosen = season.colors.find((c) => c.id === colour);
   const first = client.name.split(" ")[0];
   const [lead, ...restOfPerception] = client.desiredPerception.split(/(?<=\.)\s+/);
-  const recs = sortRecommendations(client.recommendations);
+  const recs = sortByPriority(recommendations);
   const nextUp = recs.find((r) => r.status === "Approved") ?? recs[0];
   const shown = recs.filter((r) => audience === "all" || r.audienceId === audience);
+  const audienceName = audById(audience)?.name ?? "";
   const anchorId = openRec ?? sel;
   const cardigan = wardrobe.find((w) => w.id === "w-grey-cardigan")!;
   const excerpt = ["w-ink-blazer", "w-camel-coat", "w-rust-blouse"].map((id) => itemById(id)!);
@@ -49,6 +70,53 @@ export function ClientStory() {
     { id: "all", label: "All", count: recs.length },
     ...client.audiences.map((a) => ({ id: a.id, label: a.name, count: recs.filter((r) => r.audienceId === a.id).length })),
   ];
+
+  // A link such as /clients/marisol#rec-rec-3 (from the Studio, the wardrobe, a search) lands on the recommendation
+  // opened, with the observation that motivated it lit on the portrait. Derived while rendering, so it also follows
+  // later hash changes, and it never sets state from an effect.
+  const hash = useSyncExternalStore(subscribeHash, () => window.location.hash, () => "");
+  const [appliedHash, setAppliedHash] = useState("");
+  if (hash !== appliedHash) {
+    setAppliedHash(hash);
+    const target = targetFromHash(hash, recommendations);
+    if (target) { setOpenRec(target.rec?.id ?? null); setSel(target.observationId); }
+  }
+  useEffect(() => {
+    if (!targetFromHash(hash, recommendations)) return;
+    // Scroll so the row sits just below whatever is stuck to the top: the header, and on phones and tablets the
+    // sticky window of the photograph, which would otherwise cover the row's title.
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById(hash.slice(1));
+      if (!el) return;
+      const win = document.querySelector<HTMLElement>("[data-focus-window]");
+      const stuck = win && win.offsetParent !== null ? parseFloat(getComputedStyle(win).top) + win.offsetHeight : 88;
+      window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - stuck - 16, behavior: "instant" });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [hash, recommendations]);
+
+  const workflow: Workflow = {
+    pending: isPending ? pendingAction : null,
+    feedback,
+    onAction: (rec, action) => {
+      setFeedback(null);
+      setPendingAction(action);
+      startTransition(async () => {
+        let msg: Msg, kind: Feedback["kind"] = "error";
+        try {
+          const res = await moveRecommendation(rec.id, action, { status: rec.status, visibility: rec.visibility });
+          if (res.ok) { kind = "done"; msg = t.done[action](first); }
+          else msg = res.reason === "stale" ? t.errors.stale : t.errors.failed;
+        } catch {
+          msg = t.errors.failed;
+        }
+        // A second transition: updates after an await are not part of the first, and this one must land in the same
+        // commit as the server's new render, so the message never says "Sent for review" beside a row that still says Draft.
+        const next: Feedback = { id: rec.id, kind, ...msg, nonce: ++nonce.current };
+        startTransition(() => setFeedback(next));
+      });
+    },
+  };
 
   const showObservation = (id: string) => { setSel(id); setOpenRec(null); };
   const toggleRec = (id: string, observationId: string) => {
@@ -212,19 +280,22 @@ export function ClientStory() {
               What I would change, <span className="italic-serif">and in what order.</span>
             </h2>
             <div className="mt-8">
-              <div className="hidden sm:block">
+              <RecommendationSummary recs={recs} t={t} who={first} previewHref="/clients/marisol/preview" />
+              <div className="mt-2 hidden sm:block">
                 <Filter label="Show recommendations for" items={audienceItems} value={audience} onChange={setAudience} />
               </div>
-              <div className="sm:hidden">
+              <div className="mt-2 sm:hidden">
                 <SelectField label="Show recommendations for" value={audience} onChange={(e) => setAudience(e.target.value)}>
                   {audienceItems.map((a) => <option key={a.id} value={a.id}>{a.label} ({a.count})</option>)}
                 </SelectField>
               </div>
             </div>
-            <ol className="mt-4 border-b border-ink/15" aria-live="polite">
+            <p className="sr-only" role="status">{shown.length} {shown.length === 1 ? "recommendation" : "recommendations"} shown</p>
+            {shown.length === 0 && <div className="mt-4"><EmptyState title={t.emptyAudience(audienceName)}>{t.emptyAudienceBody}</EmptyState></div>}
+            <ol className="mt-4 border-b border-ink/15">
               {shown.map((r) => (
                 <RecommendationRow
-                  key={r.id} rec={r} number={recs.indexOf(r) + 1}
+                  key={r.id} rec={r} number={recs.indexOf(r) + 1} who={first} workflow={workflow}
                   audience={audById(r.audienceId)}
                   observation={obsById(r.observationId)!}
                   observationNumber={client.observations.findIndex((o) => o.id === r.observationId) + 1}

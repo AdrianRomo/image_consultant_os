@@ -1,10 +1,13 @@
 "use client";
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { copy, type Lang } from "@/lib/copy";
 import { labContent } from "@/lib/lab";
-import { client } from "@/lib/fixture";
+import { client, type Recommendation } from "@/lib/fixture";
+import { toClientView } from "@/lib/share";
+import { apply, type Action } from "@/lib/workflow";
+import { SharedEmpty, SharedRecommendationRow } from "../share/ClientPresentation";
 import { AnnotatedPortrait, ObservationList } from "../atelier/dossier/Assessment";
-import { RecommendationRow } from "../atelier/dossier/Recommendations";
+import { RecommendationRow, StatusPair, type Feedback, type Workflow } from "../atelier/dossier/Recommendations";
 import { openPalette } from "../atelier/CommandPalette";
 import { Label } from "../atelier/primitives";
 import { Button, EmptyState, Field, Filter, Notice, SelectField, Status, Tabs, TextArea, type StatusTone } from "../atelier/ui/controls";
@@ -70,7 +73,7 @@ export function MotionDemo() {
 /* ---------------------------------------------------------------- Controls */
 const allTones: StatusTone[] = ["review", "draft", "approved", "published", "success", "error", "neutral"];
 const toneLabel: Record<StatusTone, string> = {
-  review: "Awaiting review", draft: "Draft", approved: "Approved", published: "Published", success: "Saved", error: "Not saved", neutral: "Archived",
+  review: "Awaiting review", draft: "Draft", approved: "Approved", published: "Shared with Marisol", private: "Consultant only", success: "Saved", error: "Not saved", neutral: "Archived",
 };
 
 export function ControlsDemo() {
@@ -143,16 +146,32 @@ export function ControlsDemo() {
             </Tabs>
           </div>
         </div>
-        <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
+        <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
           {allTones.map((t) => <Status key={t} tone={t}>{toneLabel[t]}</Status>)}
         </div>
-        <p className="meta mt-4">Every status has a glyph shape and words. On a phone the words remain; only the colour is optional.</p>
+        <p className="meta mt-4">Every status has a glyph shape and words. On a phone the words remain; only the colour is optional. Two questions are answered in two shapes: <strong className="font-medium">where a recommendation is</strong> (circles and a tick: draft, awaiting review, approved) and <strong className="font-medium">who can see it</strong> (squares: consultant only, shared).</p>
       </div>
     </div>
   );
 }
 
 /* ---------------------------------------------------------------- Patterns, EN/ES, normal/long */
+/* The same rules the product runs (lib/workflow.ts), applied locally so the lab needs no server. */
+function useLocalWorkflow(initial: Recommendation[], t: (typeof copy)[Lang], who: string) {
+  const [recs, setRecs] = useState(initial);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const nonce = useRef(0);
+  const workflow: Workflow = {
+    pending: null,
+    feedback,
+    onAction: (rec: Recommendation, action: Action) => {
+      setRecs((cur) => cur.map((r) => (r.id === rec.id ? apply(r, action, "2026-03-14") : r)));
+      setFeedback({ id: rec.id, kind: "done", ...t.done[action](who), nonce: ++nonce.current });
+    },
+  };
+  return { recs, workflow };
+}
+
 export function PatternsDemo() {
   const [lang, setLang] = useState<Lang>("en");
   const [long, setLong] = useState(false);
@@ -161,7 +180,11 @@ export function PatternsDemo() {
   const t = copy[lang];
   const c = labContent[lang];
   const obs = long ? [c.longObservation, c.observation] : [c.observation, c.observation2];
-  const recs = long ? [c.longRec, c.rec] : [c.rec, c.rec2];
+  // Each language keeps its own working copies, so a state changed in English is not carried into Spanish.
+  const en = useLocalWorkflow([labContent.en.rec, labContent.en.rec2, labContent.en.longRec], copy.en, "Marisol");
+  const es = useLocalWorkflow([labContent.es.rec, labContent.es.rec2, labContent.es.longRec], copy.es, "Marisol");
+  const local = lang === "en" ? en : es;
+  const recs = long ? [local.recs[2], local.recs[0]] : [local.recs[0], local.recs[1]];
   return (
     <div lang={lang}>
       <div className="flex flex-wrap items-baseline gap-x-10 gap-y-2">
@@ -180,7 +203,7 @@ export function PatternsDemo() {
           <ol className="mt-4 border-b border-ink/15">
             {recs.map((r, i) => (
               <RecommendationRow
-                key={r.id} t={t} rec={r} number={i + 1} audience={c.audience} observation={obs[0]} observationNumber={1}
+                key={r.id} t={t} rec={r} number={i + 1} audience={c.audience} observation={obs[0]} observationNumber={1} who="Marisol" workflow={local.workflow}
                 open={open === r.id} onToggle={() => setOpen(open === r.id ? null : r.id)} onShowObservation={() => setSel(obs[0].id)}
               />
             ))}
@@ -188,7 +211,7 @@ export function PatternsDemo() {
         </div>
       </div>
       <p className="meta mt-8">
-        Labels come from a dictionary (<code>lib/copy.ts</code>), so “Siguiente paso” and “Pendiente de revisión” are the real Spanish strings, not English stretched. Client name at length: <span className="italic-serif text-base">{c.longName}</span>
+        Labels come from a dictionary (<code>lib/copy.ts</code>), so “Siguiente paso” and “Pendiente de revisión” are the real Spanish strings, not English stretched. Open a row to move it on: these buttons run the product’s own transition rules on a local copy, so nothing is saved. Client name at length: <span className="italic-serif text-base">{c.longName}</span>
       </p>
     </div>
   );
@@ -257,6 +280,21 @@ export function StatesDemo() {
         <Notice tone="success" title="Plan saved as draft">Nothing is shared with Marisol until you publish.</Notice>
         <Notice tone="error" title="Could not save">The connection dropped. Your changes are still on this page; try again.</Notice>
         <Notice title="Analysis ready">Diego’s observations are complete and waiting for interpretation.</Notice>
+        <Notice tone="error" title={copy.en.errors.stale.title}>{copy.en.errors.stale.detail}</Notice>
+        <Notice tone="error" title={copy.es.errors.stale.title}>{copy.es.errors.stale.detail}</Notice>
+      </div>
+      <div className="col-span-12 md:col-span-6">
+        <Label>Empty, with a next step</Label>
+        <EmptyState title={copy.en.emptyAudience("the board")}>{copy.en.emptyAudienceBody}</EmptyState>
+        <EmptyState title={copy.es.emptyAudience("el consejo")}>{copy.es.emptyAudienceBody}</EmptyState>
+      </div>
+      <div className="col-span-12 md:col-span-6">
+        <Label>Working</Label>
+        <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-4">
+          <Button variant="solid" busy>{copy.en.actions.approve.label}</Button>
+          <Button disabled>{copy.en.actions.return.label}</Button>
+        </div>
+        <p className="meta mt-4">While a change is saved, the button pressed shows the busy cursor and the others are disabled, so two changes cannot cross. If the recommendation changed elsewhere, the request is refused and the page shows what is true now.</p>
       </div>
       <div className="col-span-12">
         <Label>Error boundary</Label>
@@ -281,6 +319,50 @@ export function AnnotationDemo() {
       <div className="col-span-12 sm:col-span-6 lg:col-span-6 lg:col-start-6">
         <ObservationList observations={client.observations} selectedId={sel} onSelect={setSel} />
         <p className="meta mt-6">On wide screens a fine connector line runs from the marker to its note (see the dossier). Without it, the open note and the highlighted marker carry the same information.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- The client's page */
+export function ShareDemo() {
+  const [lang, setLang] = useState<Lang>("en");
+  const [long, setLong] = useState(false);
+  const t = copy[lang];
+  const c = labContent[lang];
+  const profile = { name: "Marisol Vega Ortiz", desiredPerception: "", inHerWords: { quote: "", source: "" }, audiences: [c.audience] };
+  const shared = (long ? [c.longRec, c.rec] : [c.rec, c.rec2]).map((r) => ({ ...r, status: "Approved" as const, visibility: "client" as const }));
+  const rows = toClientView(profile, shared).recommendations;
+  return (
+    <div lang={lang}>
+      <div className="flex flex-wrap items-baseline gap-x-10 gap-y-2">
+        <Filter label="Language" value={lang} onChange={setLang} items={[{ id: "en", label: "English" }, { id: "es", label: "Español" }]} />
+        <Filter label="Copy length" value={long ? "long" : "normal"} onChange={(v) => setLong(v === "long")} items={[{ id: "normal", label: "Typical" }, { id: "long", label: "Long" }]} />
+      </div>
+      <div className="mt-8 grid grid-cols-12 gap-x-8 gap-y-14">
+        <div className="col-span-12 lg:col-span-7">
+          <Label>What the client reads</Label>
+          <ol className="mt-4 border-b border-ink/15">
+            {rows.map((r) => <SharedRecommendationRow key={r.id} r={r} t={t} />)}
+          </ol>
+        </div>
+        <div className="col-span-12 lg:col-span-4 lg:col-start-9">
+          <Label>Nothing shared yet</Label>
+          <div className="mt-4"><SharedEmpty t={t} /></div>
+        </div>
+      </div>
+      <div className="mt-14 grid grid-cols-12 gap-x-8 gap-y-8">
+        <div className="col-span-12 lg:col-span-7">
+          <Label>The two questions, on one recommendation</Label>
+          <ul className="mt-4 space-y-4">
+            {([["Draft", "consultant"], ["Review", "consultant"], ["Approved", "consultant"], ["Approved", "client"]] as const).map(([status, visibility]) => (
+              <li key={status + visibility} className="border-t border-ink/15 pt-4"><StatusPair rec={{ status, visibility }} t={t} who="Marisol" /></li>
+            ))}
+          </ul>
+        </div>
+        <p className="meta col-span-12 lg:col-span-4 lg:col-start-9">
+          A client’s page has no status words, no controls and no navigation. It is built from a whitelist of fields, so a private note, a draft or another client cannot appear there even by mistake. The consultant previews the very same page at <code>/clients/marisol/preview</code>.
+        </p>
       </div>
     </div>
   );

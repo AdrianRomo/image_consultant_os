@@ -11,6 +11,27 @@ export type Observation = {
   // Consultant attribution: when and where this was noted.
   noted: string;
 };
+// Two separate questions about a recommendation (see workflow.ts):
+//   status     where it is in the consultant's own process: Draft, Review (awaiting her decision), Approved.
+//   visibility who can see it: the consultant alone, or the client too. Only an Approved one can be shared.
+export type Status = "Draft" | "Review" | "Approved";
+export type Visibility = "consultant" | "client";
+
+/** One entry in the record of a recommendation. `on` is an ISO date in the studio's fictional calendar (clock.ts). */
+export type RecommendationEvent =
+  | { on: string; kind: "status"; to: Status }
+  | { on: string; kind: "visibility"; to: Visibility };
+
+/** Superseded wording, kept so an earlier and a current version can be compared. Wording only, never results. */
+export type EarlierVersion = {
+  version: number;
+  on: string;
+  status: Status;
+  title: string;
+  rationale: string;
+  nextStep: string;
+};
+
 export type Recommendation = {
   id: string;
   title: string;
@@ -18,10 +39,17 @@ export type Recommendation = {
   observationId: string;
   audienceId?: string;
   priority: "High" | "Medium" | "Low";
-  status: "Approved" | "Draft";
+  status: Status;
+  visibility: Visibility;
   nextStep: string;
   // Which part of the desired perception this serves.
   serves: string;
+  // The consultant's own reasoning. Never part of a client view (share.ts builds that from a whitelist).
+  privateNote?: string;
+  // When the current wording was last changed. The current version number is earlier.length + 1.
+  updated: string;
+  earlier?: EarlierVersion[];
+  events: RecommendationEvent[];
 };
 export type ClientProfile = {
   name: string;
@@ -39,6 +67,9 @@ export type ClientProfile = {
   session: { date: string; title: string; notes: string; decisions: string[]; followUps: string[] };
   actionPlan: { status: "Draft" | "Published"; items: string[] };
 };
+
+/** The one client whose dossier is built. Routes use it to decide whether a slug exists. */
+export const clientSlug = "marisol";
 
 export const client: ClientProfile = {
   name: "Marisol Vega Ortiz",
@@ -102,8 +133,25 @@ export const client: ClientProfile = {
       audienceId: "aud-board",
       priority: "High",
       status: "Approved",
+      visibility: "client",
       nextStep: "Two fittings booked before the March board meeting.",
       serves: "Decisive",
+      privateNote: "The chair has called her jacket “soft” in two meetings. Do not repeat it to her; let the fitting make the case.",
+      updated: "2026-03-12",
+      earlier: [
+        {
+          version: 1, on: "2026-03-05", status: "Draft",
+          title: "A navy blazer for board days",
+          rationale: "Navy reads as serious and is easy to find in her size.",
+          nextStep: "Look at three navy options.",
+        },
+      ],
+      events: [
+        { on: "2026-03-05", kind: "status", to: "Draft" },
+        { on: "2026-03-12", kind: "status", to: "Review" },
+        { on: "2026-03-12", kind: "status", to: "Approved" },
+        { on: "2026-03-13", kind: "visibility", to: "client" },
+      ],
     },
     {
       id: "rec-2",
@@ -113,8 +161,16 @@ export const client: ClientProfile = {
       audienceId: "aud-board",
       priority: "High",
       status: "Approved",
+      visibility: "consultant",
       nextStep: "Rehearse three challenge questions on camera, week 3.",
       serves: "Decisive",
+      privateNote: "Confirm she is comfortable being filmed before week 3. She agreed to the recording for review only.",
+      updated: "2026-03-12",
+      events: [
+        { on: "2026-03-12", kind: "status", to: "Draft" },
+        { on: "2026-03-12", kind: "status", to: "Review" },
+        { on: "2026-03-12", kind: "status", to: "Approved" },
+      ],
     },
     {
       id: "rec-3",
@@ -123,9 +179,15 @@ export const client: ClientProfile = {
       observationId: "obs-2",
       audienceId: "aud-team",
       priority: "Medium",
-      status: "Draft",
+      status: "Review",
+      visibility: "consultant",
       nextStep: "Draft three opening lines for review.",
       serves: "Warm",
+      updated: "2026-03-12",
+      events: [
+        { on: "2026-03-12", kind: "status", to: "Draft" },
+        { on: "2026-03-13", kind: "status", to: "Review" },
+      ],
     },
     {
       id: "rec-4",
@@ -134,8 +196,32 @@ export const client: ClientProfile = {
       observationId: "obs-3",
       priority: "Medium",
       status: "Approved",
+      visibility: "client",
       nextStep: "Photographer shortlist by Friday.",
       serves: "Decisive",
+      updated: "2026-03-05",
+      events: [
+        { on: "2026-03-05", kind: "status", to: "Draft" },
+        { on: "2026-03-05", kind: "status", to: "Review" },
+        { on: "2026-03-05", kind: "status", to: "Approved" },
+        { on: "2026-03-06", kind: "visibility", to: "client" },
+      ],
+    },
+    {
+      // Grounded in session 2: she asked for a written cue card (see `session` below).
+      id: "rec-5",
+      title: "A one-page cue card for the three hardest questions",
+      rationale: "She asked for something to hold in the room. Three prepared first sentences keep the pause deliberate and the hands where the board can see them.",
+      observationId: "obs-2",
+      audienceId: "aud-board",
+      priority: "Medium",
+      status: "Draft",
+      visibility: "consultant",
+      nextStep: "Write the three first sentences, then go through them with her in session 3.",
+      serves: "Decisive",
+      privateNote: "She may over-rehearse. Offer the card as a safety net, not a script.",
+      updated: "2026-03-13",
+      events: [{ on: "2026-03-13", kind: "status", to: "Draft" }],
     },
   ],
   session: {

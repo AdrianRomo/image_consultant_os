@@ -1,10 +1,14 @@
 import Link from "next/link";
-import { client, obsById } from "@/lib/fixture";
+import { client } from "@/lib/fixture";
 import { consultations, itemById, studioClients, upcoming, wardrobe } from "@/lib/atelier";
+import { STUDIO_TODAY, formatDay, relativeDay } from "@/lib/clock";
+import { copy } from "@/lib/copy";
+import { liveRecommendations } from "@/lib/live";
+import { studioToday, type Waiting } from "@/lib/today";
 import { Garment } from "@/components/atelier/Garment";
 import { Portrait, PortraitPlaceholder } from "@/components/atelier/Portrait";
 import { Label, Marker, Reveal, TextLink } from "@/components/atelier/primitives";
-import { Status } from "@/components/atelier/ui/controls";
+import { EmptyState, Status } from "@/components/atelier/ui/controls";
 import { photoCreditLine } from "@/lib/photos";
 
 export const metadata = { title: "Studio" };
@@ -12,8 +16,24 @@ export const metadata = { title: "Studio" };
 // Roster plates step down in size so the client who needs you now leads, and sit on one baseline.
 const plateSpan = ["col-span-6 lg:col-span-4", "col-span-3 lg:col-span-3", "col-span-3 lg:col-span-2"];
 
-export default function Studio() {
-  const awaiting = client.recommendations.filter((r) => r.status === "Draft");
+const words = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+const word = (n: number) => words[n] ?? String(n);
+const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export default async function Studio() {
+  const recs = await liveRecommendations();
+  const today = studioToday({
+    today: STUDIO_TODAY, clients: studioClients, appointments: upcoming, recommendations: recs,
+    client: { slug: "marisol", name: client.name },
+  });
+  const t = copy.en;
+  const nextAppointment = today.upcoming[0];
+  const waitingRecs = today.waiting.filter((w) => w.kind === "recommendation").length;
+  const waitingClients = new Set(today.waiting.map((w) => w.slug)).size;
+  const clientFor = (slug: string) => studioClients.find((c) => c.slug === slug)!;
+  // Marisol's status comes from her live recommendations; the others carry a client-level status of their own.
+  const status = (c: (typeof studioClients)[number]) =>
+    c.slug === "marisol" ? (waitingRecs > 0 ? "Awaiting your review" : undefined) : c.status;
   const outside = wardrobe.find((w) => !w.inPalette && w.slot !== "watch")!;
   const featured = ["w-camel-coat", "w-rust-blouse", "w-cognac-loafers"].map((id) => itemById(id)!);
 
@@ -41,20 +61,103 @@ export default function Studio() {
               A living expression of who you are, how you move, and how you want to be seen.
             </p>
             <div className="rise col-span-12 mt-8 sm:col-span-4 sm:col-start-7 sm:mt-0 lg:col-start-5" style={{ ["--d" as string]: "320ms" }}>
-              <TextLink href="/clients/marisol">Continue with Marisol</TextLink>
-              <p className="meta">Session 3 on Thursday 19 March</p>
+              <p className="label tone-muted">Today · {formatDay(today.date, { weekday: "long" })}</p>
+              {today.next?.kind === "review" && <TextLink href={today.next.href}>Review {today.next.client}’s recommendation</TextLink>}
+              {today.next?.kind === "prepare" && today.next.href && <TextLink href={today.next.href}>Open {today.next.who}’s dossier</TextLink>}
+              {!today.next && <p className="mt-2 text-sm">Nothing is waiting for you.</p>}
+              {nextAppointment && (
+                <p className="meta">{formatDay(nextAppointment.on, { weekday: "short" })} · {nextAppointment.what}</p>
+              )}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ------------------------------------------------ 01 Clients: a roster of portraits, not a table */}
+      {/* ------------------------------------------------ 01 Today: real work, derived from the records */}
+      <section id="today" aria-labelledby="today-h" className="pt-[var(--rhythm-md)]">
+        <Marker n="01" label="Today" sub={formatDay(today.date, { weekday: "long" })} />
+        <div className="mt-12 grid grid-cols-12 gap-x-6 gap-y-14">
+          <div className="col-span-12 lg:col-span-8">
+            <h2 id="today-h" className="display-m">Today in the <span className="italic-serif">studio</span></h2>
+            <p className="body-copy tone-muted mt-5">
+              {waitingRecs > 0 && `${sentence(word(waitingRecs))} recommendation${waitingRecs === 1 ? " is" : "s are"} waiting for your decision.`}
+              {today.drafts > 0 && `${waitingRecs > 0 ? " " : ""}${waitingRecs > 0 ? `${sentence(word(today.drafts))} more` : `${sentence(word(today.drafts))} recommendation${today.drafts === 1 ? "" : "s"}`} ${today.drafts === 1 ? "is" : "are"} still in draft.`}
+              {waitingRecs === 0 && today.drafts === 0 && "No recommendation is waiting for your decision."}
+              {nextAppointment && ` Next up: ${nextAppointment.what}, ${relativeDay(nextAppointment.inDays)}.`}
+            </p>
+          </div>
+
+          {/* The item that is the next action leads with a strong rule and says so; nothing is listed twice. */}
+          <div className="col-span-12 lg:col-span-6">
+            <Label>Waiting for your judgement</Label>
+            {today.waiting.length === 0 ? (
+              <div className="mt-6"><EmptyState title="Nothing to decide.">Recommendations you send for review will wait for you here.</EmptyState></div>
+            ) : (
+              <ol className="mt-6 border-b border-ink/15">
+                {today.waiting.map((w: Waiting, i) => {
+                  const c = clientFor(w.slug);
+                  const lead = i === 0 && today.next?.kind === "review";
+                  const rule = lead ? "border-ink" : "border-ink/15";
+                  return w.kind === "recommendation" ? (
+                    <li key={w.id} className={`list-none border-t ${rule} py-7`}>
+                      {lead && <Label tone="ink" className="mb-3">Start here</Label>}
+                      <Status tone="review">{t.status.Review}</Status>
+                      <p className="headline mt-3 break-words">{w.title}</p>
+                      <p className="meta mt-3">{c.name} · {t.priority[w.priority]}</p>
+                      <TextLink href={w.href} className="mt-2 text-sm">Review the direction</TextLink>
+                    </li>
+                  ) : (
+                    <li key={`analysis-${w.slug}`} className={`list-none border-t ${rule} py-7`}>
+                      <Status tone="review">Analysis ready</Status>
+                      <p className="headline mt-3">{c.name}</p>
+                      <p className="meta mt-3">{c.focus} · observations complete, waiting for interpretation</p>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </div>
+
+          <div className="col-span-12 lg:col-span-4 lg:col-start-9">
+            <Label>Coming up</Label>
+            {today.upcoming.length === 0 ? (
+              <div className="mt-6"><EmptyState title="Nothing is booked.">Fittings and sessions you add will appear here, nearest first.</EmptyState></div>
+            ) : (
+              <ol className="mt-6">
+                {today.upcoming.map((u, i) => {
+                  const lead = i === 0 && today.next?.kind === "prepare";
+                  const body = (
+                    <>
+                      {lead && <Label tone="ink" className="mb-3">Start here</Label>}
+                      <p className="numeral text-3xl leading-none">{formatDay(u.on, { weekday: "short" })}</p>
+                      <p className="label tone-muted mt-2">{relativeDay(u.inDays)}</p>
+                      <p className="mt-3 text-sm">{u.href ? <span className="travel">{u.what}</span> : u.what}</p>
+                      <p className="meta">{u.who}</p>
+                    </>
+                  );
+                  return (
+                    <li key={u.on + u.what} className={`list-none border-t ${lead ? "border-ink" : "border-ink/15"}`}>
+                      {u.href ? <Link href={u.href} className="group focus-inset block py-5">{body}</Link> : <div className="py-5">{body}</div>}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------ 02 Clients: a roster of portraits, not a table */}
       <section id="clients" aria-labelledby="clients-h" className="pt-[var(--rhythm-md)]">
-        <Marker n="01" label="Clients" />
+        <Marker n="02" label="Clients" />
         <div className="mt-12 grid grid-cols-12 gap-x-6 gap-y-12">
           <div className="col-span-12 lg:col-span-3">
-            <h2 id="clients-h" className="display-m">Three clients, <span className="italic-serif">two waiting on you.</span></h2>
-            <p className="body-copy tone-muted mt-5">Marisol’s draft is ready to review. Diego’s analysis is complete and waiting for your interpretation.</p>
+            <h2 id="clients-h" className="display-m">{sentence(word(studioClients.length))} clients, <span className="italic-serif">{waitingClients === 0 ? "none waiting on you." : `${word(waitingClients)} waiting on you.`}</span></h2>
+            <p className="body-copy tone-muted mt-5">
+              {today.waiting.length === 0
+                ? "Nobody is waiting on you."
+                : today.waiting.map((w) => (w.kind === "recommendation" ? `${w.client}’s recommendation is ready for your review.` : `${w.client}’s analysis is complete and waiting for your interpretation.`)).join(" ")}
+            </p>
           </div>
           <ul className="col-span-12 grid grid-cols-6 items-end gap-x-4 gap-y-12 lg:col-span-9 lg:grid-cols-9 lg:gap-x-6">
             {studioClients.map((c, i) => {
@@ -66,7 +169,7 @@ export default function Studio() {
                   <h3 className="headline transition-transform duration-[var(--dur-ui)] group-hover:translate-x-1">{c.name}</h3>
                   <p className="meta mt-1">{c.focus}</p>
                   <p className="meta">{c.last}</p>
-                  {c.status && <Status tone="review" className="mt-3">{c.status}</Status>}
+                  {status(c) && <Status tone="review" className="mt-3">{status(c)}</Status>}
                 </div>
               );
               return (
@@ -80,44 +183,6 @@ export default function Studio() {
               );
             })}
           </ul>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------ 02 For review + Upcoming */}
-      <section aria-labelledby="review-h" className="pt-[var(--rhythm-lg)]">
-        <Marker n="02" label="This week" />
-        <div className="mt-12 grid grid-cols-12 gap-x-6 gap-y-16">
-          <div className="col-span-12 lg:col-span-6 lg:col-start-2">
-            <h2 id="review-h" className="display-m">Waiting for your <span className="italic-serif">judgement</span></h2>
-            <ol className="mt-10">
-              {awaiting.map((r) => (
-                <li key={r.id} className="list-none border-t border-ink/15 py-7">
-                  <Label tone="accent">Draft · {obsById(r.observationId)!.area}</Label>
-                  <p className="headline mt-3">{r.title}</p>
-                  <p className="meta mt-3">Marisol Vega Ortiz · {r.nextStep}</p>
-                  <TextLink href={`/clients/marisol#rec-${r.id}`} className="mt-2 text-sm">Review the direction</TextLink>
-                </li>
-              ))}
-              <li className="list-none border-y border-ink/15 py-7">
-                <Label tone="accent">Analysis ready</Label>
-                <p className="headline mt-3">Diego Flores</p>
-                <p className="meta mt-3">Personal branding · observations complete, waiting for interpretation</p>
-              </li>
-            </ol>
-          </div>
-
-          <div className="col-span-12 lg:col-span-4 lg:col-start-9 lg:pt-24">
-            <Label>Upcoming</Label>
-            <ol className="mt-6">
-              {upcoming.map((u) => (
-                <li key={u.when} className="list-none py-5">
-                  <p className="numeral text-3xl leading-none">{u.when}</p>
-                  <p className="mt-2 text-sm">{u.what}</p>
-                  <p className="meta">{u.who}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
         </div>
       </section>
 
