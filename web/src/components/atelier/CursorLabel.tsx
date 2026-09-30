@@ -23,11 +23,14 @@ export function CursorLabel() {
       });
     };
     const leave = () => { el.style.opacity = "0"; };
+    // A press usually means a navigation or an overlay: the label has done its job, and must not outlive the page.
+    window.addEventListener("pointerdown", leave, { passive: true });
     window.addEventListener("pointermove", move, { passive: true });
     document.addEventListener("pointerleave", leave);
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerdown", leave);
       document.removeEventListener("pointerleave", leave);
     };
   }, []);

@@ -3,6 +3,7 @@ import { Playfair_Display, Cormorant_Garamond, Bricolage_Grotesque, Inter } from
 import "./globals.css";
 import { SiteNav } from "@/components/atelier/SiteNav";
 import { CursorLabel } from "@/components/atelier/CursorLabel";
+import { CommandPalette } from "@/components/atelier/CommandPalette";
 
 const playfair = Playfair_Display({ variable: "--font-playfair", subsets: ["latin"] });
 const cormorant = Cormorant_Garamond({ variable: "--font-cormorant", subsets: ["latin"], weight: ["300", "400", "500", "600"], style: ["normal", "italic"] });
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[80] focus:bg-ink focus:px-3 focus:py-2 focus:text-ivory">Skip to content</a>
         <SiteNav />
         {children}
+        <CommandPalette />
         <CursorLabel />
       </body>
     </html>

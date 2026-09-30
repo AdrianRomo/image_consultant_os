@@ -2,7 +2,8 @@
 import { useMemo, useState } from "react";
 import { consultations, itemById, looks, readLook, slots, wardrobe, type Slot } from "@/lib/atelier";
 import { Garment } from "./Garment";
-import { Label, Reveal } from "./primitives";
+import { Label } from "./primitives";
+import { Field, Tabs } from "./ui/controls";
 
 type Items = Partial<Record<Slot, string>>;
 
@@ -74,7 +75,7 @@ export function LookStudio({ initialAsk, initialLook, initialAdd }: { initialAsk
       <header className="grid grid-cols-12 gap-x-6 gap-y-4">
         <div className="col-span-12 lg:col-span-9">
           <Label className="rise">Marisol Vega Ortiz</Label>
-          <h1 className="display-l rise mt-4" style={{ ["--d" as string]: "100ms" }}>
+          <h1 className="display-l rise mt-4" style={{ ["--d" as string]: "60ms" }}>
             <span className="uppercase">Compose</span> <span className="italic-serif">a look</span>
           </h1>
         </div>
@@ -89,13 +90,15 @@ export function LookStudio({ initialAsk, initialLook, initialAdd }: { initialAsk
               if (!it) return null;
               const p = place[s];
               return (
-                <div key={s + it.id} className="settle absolute" style={{ left: `${p.l}%`, top: `${p.t}%`, width: `${p.w}%`, zIndex: p.z }}>
+                <div key={s + it.id} className="fade absolute" style={{ left: `${p.l}%`, top: `${p.t}%`, width: `${p.w}%`, zIndex: p.z }}>
                   <div style={{ transform: `rotate(${p.r}deg)` }}><Garment kind={it.kind} color={it.color} className="h-auto w-full" /></div>
                 </div>
               );
             })}
-            {chosen.length === 0 && <p className="meta absolute inset-0 grid place-items-center">Choose a piece to begin.</p>}
-            <p className="label absolute bottom-3 left-4 text-warm">{title}</p>
+            {chosen.length === 0 && (
+              <p className="statement tone-muted absolute inset-0 grid place-items-center px-8 text-center !text-[clamp(1.4rem,2.4vw,2rem)]">Choose a piece to begin.</p>
+            )}
+            {chosen.length > 0 && <p className="label tone-muted absolute bottom-3 left-4">{title}</p>}
           </div>
         </div>
 
@@ -103,44 +106,43 @@ export function LookStudio({ initialAsk, initialLook, initialAdd }: { initialAsk
         <div className="col-span-12 lg:col-span-5 lg:col-start-8">
           <Label>Ask your consultant</Label>
           <form onSubmit={(e) => { e.preventDefault(); ask(match(prompt)); }} className="mt-3">
-            <label htmlFor="ask" className="sr-only">What are you dressing for?</label>
-            <input
-              id="ask"
+            <Field
+              id="ask" label="What are you dressing for?" hideLabel
               value={prompt}
               onChange={(e) => { setPrompt(e.target.value); setMiss(false); }}
               placeholder="What are you dressing for?"
-              className="w-full font-[family-name:var(--font-cormorant)] text-[1.5rem] leading-tight border-b border-ink/40 bg-transparent pb-3 outline-none transition-colors placeholder:text-taupe focus:border-ink"
+              className="field-display"
             />
             <div className="mt-4 flex flex-wrap items-baseline gap-x-6 gap-y-1">
-              <button type="submit" className="label travel py-2">Explore directions ↗</button>
+              <button type="submit" className="label tone-ink tap py-2"><span className="travel pb-0.5">Explore directions ↗</span></button>
             </div>
           </form>
           <ul className="mt-4 space-y-0.5">
             {consultations.map((c) => (
               <li key={c.id}>
-                <button onClick={() => ask(c.id)} className="group py-1.5 text-left text-sm text-warm hover:text-ink">
+                <button onClick={() => ask(c.id)} className="group tap py-1.5 text-left text-sm tone-muted hover:text-ink">
                   <span className="travel">{c.prompt}</span> <span aria-hidden>↗</span>
                 </button>
               </li>
             ))}
           </ul>
-          {miss && <p className="meta mt-3" role="status">I have no direction for that in this preview. Try one of the occasions above.</p>}
+          {miss && <p className="meta mt-3" role="status" id="ask-miss">I have no direction for that in this preview. Try one of the occasions above.</p>}
 
           <div className="mt-12 border-t border-ink/15 pt-6" aria-live="polite">
             <Label tone="accent">Consultant notes</Label>
             {consult ? (
-              <div key={consult.id + (refine ?? "")} className="rise">
+              <div key={consult.id + (refine ?? "")} className="fade">
                 {consult.notes.map((n) => <p key={n} className="statement mt-3 !text-[clamp(1.5rem,2.4vw,2.1rem)]">{n}</p>)}
                 {refinement && <p className="body-copy mt-4">{refinement.note}</p>}
                 <div className="mt-6 flex flex-wrap items-baseline gap-x-6">
                   <Label>Refine</Label>
                   {consult.refinements.map((r) => (
-                    <button key={r.id} onClick={() => applyRefinement(r)} aria-pressed={refine === r.id} className={`label travel py-2 ${refine === r.id ? "travel-static text-ink" : "text-warm hover:text-ink"}`}>{r.label}</button>
+                    <button key={r.id} onClick={() => applyRefinement(r)} aria-pressed={refine === r.id} className={`label tap py-2 ${refine === r.id ? "tone-ink" : "tone-muted hover:text-ink"}`}><span className={`travel pb-0.5 ${refine === r.id ? "travel-static" : ""}`}>{r.label}</span></button>
                   ))}
                 </div>
               </div>
             ) : reading.notes.length ? (
-              <div key={reading.notes.join()} className="rise">
+              <div key={reading.notes.join()} className="fade">
                 {reading.notes.map((n) => <p key={n} className="body-copy mt-3 text-[1.02rem]">{n}</p>)}
               </div>
             ) : (
@@ -161,33 +163,28 @@ export function LookStudio({ initialAsk, initialLook, initialAdd }: { initialAsk
 
       {/* ------------------------------------------------ Picker */}
       <section aria-labelledby="pick-h" className="mt-24">
-        <Reveal>
-          <h2 id="pick-h" className="label text-ink">From the wardrobe</h2>
-        </Reveal>
-        <div className="mt-4 flex flex-wrap gap-x-7 gap-y-1 border-t border-ink/15 pt-3" role="group" aria-label="Piece type">
-          {slots.map((s) => (
-            <button key={s.id} onClick={() => setSlot(s.id)} aria-pressed={slot === s.id} className={`label py-2.5 ${slot === s.id ? "text-ink" : "text-warm hover:text-ink"}`}>
-              <span className={`travel pb-0.5 ${slot === s.id ? "travel-static" : ""}`}>{s.label}</span>
-              {items[s.id] && <span className="ml-2 inline-block h-1.5 w-1.5 rounded-full bg-cordovan align-middle" aria-label="chosen" />}
-            </button>
-          ))}
-        </div>
-        <ul className="no-scrollbar mt-6 flex gap-4 overflow-x-auto pb-2 sm:gap-6">
-          {wardrobe.filter((w) => w.slot === slot).map((w) => {
-            const on = items[w.slot] === w.id;
-            return (
-              <li key={w.id} className="w-36 shrink-0 sm:w-48">
-                <button onClick={() => choose(w.id)} aria-pressed={on} className="group block w-full text-left">
-                  <div className={`frame bg-paper p-[12%] transition-[outline-color] duration-300 outline outline-1 outline-offset-4 ${on ? "outline-ink" : "outline-transparent"}`}>
-                    <div className="frame-inner"><Garment kind={w.kind} color={w.color} className="aspect-[5/6] h-auto w-full" /></div>
-                  </div>
-                  <p className="mt-2 text-sm">{w.name}</p>
-                  <p className="meta">{on ? "In this look · tap to remove" : w.inPalette ? w.colorName : `${w.colorName} · outside palette`}</p>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <h2 id="pick-h" className="label tone-ink mb-4">From the wardrobe</h2>
+        <Tabs
+          label="Piece type" value={slot} onChange={setSlot}
+          items={slots.map((s) => ({ id: s.id, label: s.label, mark: !!items[s.id] }))}
+        >
+          <ul className="no-scrollbar mt-6 flex gap-4 overflow-x-auto pb-2 sm:gap-6">
+            {wardrobe.filter((w) => w.slot === slot).map((w) => {
+              const on = items[w.slot] === w.id;
+              return (
+                <li key={w.id} className="w-36 shrink-0 sm:w-48">
+                  <button onClick={() => choose(w.id)} aria-pressed={on} className="group block w-full text-left">
+                    <div className={`frame bg-paper p-[12%] outline outline-1 outline-offset-4 transition-[outline-color] duration-[var(--dur-feedback)] ${on ? "outline-ink" : "outline-transparent"}`}>
+                      <div className="frame-inner"><Garment kind={w.kind} color={w.color} className="aspect-[5/6] h-auto w-full" /></div>
+                    </div>
+                    <p className="mt-2 text-sm">{w.name}</p>
+                    <p className="meta">{on ? "In this look · tap to remove" : w.inPalette ? w.colorName : `${w.colorName} · outside palette`}</p>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </Tabs>
         <p className="meta mt-10">Consultant notes in this preview are scripted for three occasions. Nothing is generated or saved.</p>
       </section>
     </>

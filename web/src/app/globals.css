@@ -1,29 +1,61 @@
 @import "tailwindcss";
 
+/* Layering. Tailwind orders its layers theme < base < components < utilities. The product's own classes
+   (typography, controls, photo finish) live in `components`, so a utility on an element always wins, as
+   in any Tailwind project (`text-ink` overrides `.meta`'s colour; `hidden` hides a `.btn`). What must beat
+   utilities stays unlayered on purpose: motion, reduced motion, dialogs, focus, view transitions. */
+
 /* ------------------------------------------------------------------
    Atelier design system
-   Warm ivory + ink, one restrained accent (cordovan) used only where it
-   carries meaning: "awaiting review", active selection, focus.
+   Ivory + ink. One restrained accent (cordovan) that only ever carries
+   meaning: "awaiting review", the active selection, focus, an error.
+   Everything below is documented, and shown live, at /design-lab.
    ------------------------------------------------------------------ */
 :root {
+  /* Palette (raw). Prefer the semantic tokens below in components. */
   --ivory: #f5f1e8;
   --paper: #efe9dc;
   --stone: #e2dac9;
-  --taupe: #a99b86;
-  --warm-gray: #6b6357; /* 5.2:1 on ivory — safe for small text */
+  --taupe: #a99b86; /* 6.7:1 on ink. Use on dark grounds only */
+  --warm-gray: #6b6357; /* 5.25:1 on ivory, 4.89:1 on paper */
+  --faint: #857a68; /* 3.74:1. Large decorative numerals ONLY (>= 24px) */
   --charcoal: #2d2a26;
   --ink: #171512;
   --cordovan: #7a3324;
+  --olive: #5d6238;
 
-  --dur-feedback: 180ms;
-  --dur-ui: 320ms;
-  --dur-editorial: 800ms;
+  /* Semantic */
+  --bg: var(--ivory);
+  --surface-sunken: var(--paper);
+  --surface-inverse: var(--ink);
+  --text: var(--ink);
+  --text-body: var(--charcoal);
+  --text-muted: var(--warm-gray);
+  --text-faint: var(--faint);
+  --text-on-inverse: var(--ivory);
+  --text-on-inverse-muted: var(--taupe);
+  --rule: rgb(23 21 18 / 0.15);
+  --rule-strong: rgb(23 21 18 / 0.45);
+  --accent: var(--cordovan); /* attention, selection, focus */
+  --positive: var(--olive); /* saved, approved */
+  --danger: var(--cordovan); /* always paired with words and a glyph */
+
+  /* Motion. Three tiers. Nothing else. */
+  --dur-feedback: 160ms; /* hover, press, small state */
+  --dur-ui: 260ms; /* tabs, disclosure, contextual change */
+  --dur-panel: 300ms; /* drawers and dialogs */
+  --dur-spatial: 520ms; /* portrait continuity, unmask */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
 
+  /* Layout and rhythm */
   --font-display: var(--font-cormorant);
   --gutter: clamp(1.25rem, 4vw, 3.5rem);
-  --rail: 3.25rem;
+  --rhythm-lg: clamp(5rem, 13vw, 12rem); /* between movements */
+  --rhythm-md: clamp(3.5rem, 9vw, 8rem); /* between chapters */
+  --rhythm-sm: clamp(2.5rem, 5vw, 4.5rem); /* within a chapter */
+  --radius: 2px; /* the only radius; circles are swatches and markers */
+  --header-h: 3.75rem;
 }
 
 @theme inline {
@@ -36,49 +68,66 @@
   --color-stone: var(--stone);
   --color-taupe: var(--taupe);
   --color-warm: var(--warm-gray);
+  --color-faint: var(--faint);
   --color-charcoal: var(--charcoal);
   --color-ink: var(--ink);
   --color-cordovan: var(--cordovan);
+  --color-olive: var(--olive);
 }
 
-html { background: var(--ivory); }
+html {
+  background: var(--bg);
+  scroll-padding-top: 5.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--taupe) transparent;
+}
 body {
   font-family: var(--font-inter), system-ui, sans-serif;
-  color: var(--ink);
-  background: var(--ivory);
+  color: var(--text);
+  background: var(--bg);
   -webkit-font-smoothing: antialiased;
+  font-optical-sizing: auto;
 }
-
-/* Tactile paper: a whisper of grain, fixed behind everything. */
-body::before {
-  content: "";
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  opacity: 0.35; mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .45  0 0 0 0 .4  0 0 0 .09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-}
-body > * { position: relative; z-index: 1; }
+/* body is a flex column and pages centre `main` with auto margins, which would size it to its content:
+   anything with a wide minimum would then stretch the whole page. Keep the page as wide as the viewport. */
+body > main { width: 100%; }
 
 ::selection { background: var(--ink); color: var(--ivory); }
 
-/* ---------------- Typography scale ---------------- */
+@layer components {
+/* ---------------- Typography ----------------
+   Display serif carries identity: names, statements, conclusions.
+   Inter carries everything you operate: labels, metadata, forms.        */
 .display-xl { font-family: var(--font-display), serif; font-weight: 300; letter-spacing: -0.02em;
-  line-height: 0.88; font-size: clamp(3.4rem, 9.6vw, 10rem); text-transform: uppercase; }
+  line-height: 0.88; font-size: clamp(3.4rem, 9.6vw, 10rem); text-transform: uppercase; text-wrap: balance; }
 .display-l  { font-family: var(--font-display), serif; font-weight: 300; letter-spacing: -0.015em;
-  line-height: 0.95; font-size: clamp(3rem, 9vw, 8rem); }
+  line-height: 0.95; font-size: clamp(3rem, 9vw, 8rem); text-wrap: balance; }
 .display-m  { font-family: var(--font-display), serif; font-weight: 400; letter-spacing: -0.01em;
-  line-height: 1.02; font-size: clamp(2.1rem, 5vw, 4.25rem); }
+  line-height: 1.02; font-size: clamp(2.1rem, 5vw, 4.25rem); text-wrap: balance; }
 .headline   { font-family: var(--font-display), serif; font-weight: 400; line-height: 1.1;
-  font-size: clamp(1.6rem, 2.6vw, 2.25rem); }
+  font-size: clamp(1.6rem, 2.6vw, 2.25rem); text-wrap: balance; }
 .statement  { font-family: var(--font-display), serif; font-weight: 300; font-style: italic; line-height: 1.12;
-  font-size: clamp(1.9rem, 4.2vw, 3.5rem); letter-spacing: -0.005em; }
-.lede       { font-size: clamp(1rem, 1.3vw, 1.15rem); line-height: 1.65; color: var(--charcoal); max-width: 34ch; }
-.body-copy  { font-size: 0.95rem; line-height: 1.7; color: var(--charcoal); max-width: 52ch; }
-.label      { font-size: 0.6875rem; line-height: 1.4; letter-spacing: 0.22em; text-transform: uppercase; font-weight: 500; }
-.meta       { font-size: 0.8125rem; line-height: 1.5; color: var(--warm-gray); }
+  font-size: clamp(1.9rem, 4.2vw, 3.5rem); letter-spacing: -0.005em; text-wrap: balance; }
+/* The client's name. The largest voice in the product. */
+.name       { font-family: var(--font-display), serif; font-weight: 300; letter-spacing: -0.028em;
+  line-height: 0.86; font-size: clamp(4.25rem, 12.4vw, 12.5rem); }
+.lede       { font-size: clamp(1rem, 1.3vw, 1.15rem); line-height: 1.65; color: var(--text-body); max-width: 34ch; text-wrap: pretty; }
+.body-copy  { font-size: 0.95rem; line-height: 1.7; color: var(--text-body); max-width: 52ch; text-wrap: pretty; }
+.label      { font-size: 0.75rem; line-height: 1.4; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 500; }
+.meta       { font-size: 0.8125rem; line-height: 1.5; color: var(--text-muted); }
 .numeral    { font-family: var(--font-display), serif; font-style: italic; font-weight: 300; font-feature-settings: "lnum"; }
 .italic-serif { font-family: var(--font-display), serif; font-style: italic; }
-
-.text-warm { color: var(--warm-gray); }
+.text-warm  { color: var(--text-muted); }
+/* Tone classes. Custom classes such as .meta and .body-copy are unlayered and therefore beat Tailwind's
+   colour utilities, so any colour override on them must use these (never `meta text-cordovan`). */
+.tone-ink { color: var(--text); }
+.tone-body { color: var(--text-body); }
+.tone-muted { color: var(--text-muted); }
+.tone-faint { color: var(--text-faint); }
+.tone-accent { color: var(--accent); }
+.tone-positive { color: var(--positive); }
+.tone-inverse { color: var(--text-on-inverse); }
+.tone-inverse-muted { color: var(--text-on-inverse-muted); }
 
 /* Underline that travels across on hover */
 .travel { background-image: linear-gradient(currentColor, currentColor); background-repeat: no-repeat;
@@ -86,50 +135,101 @@ body > * { position: relative; z-index: 1; }
 .travel:hover, .travel:focus-visible, a:hover .travel, button:hover .travel, .group:hover .travel, .group:focus-visible .travel {
   background-size: 100% 1px; background-position: 0 100%; }
 .travel-static { background-size: 100% 1px; background-position: 0 100%; }
+}
 
-/* ---------------- Motion ---------------- */
-@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+/* ---------------- Motion ----------------
+   Tiers: feedback 160ms, ui 260ms, panel 300ms, spatial 520ms.
+   Motion is used for continuity, hierarchy, feedback and spatial relation.
+   There is deliberately no scroll-triggered fade-up and no ambient motion. */
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes settle { from { opacity: 0; transform: translateY(-14px) rotate(-1.2deg); } to { opacity: 1; transform: none; } }
 @keyframes draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@keyframes mask-up { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
-@keyframes curtain { 0% { opacity: 0; } 25% { opacity: 1; } 65% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes numeral-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
-.rise    { animation: rise var(--dur-editorial) var(--ease-out) both; animation-delay: var(--d, 0ms); }
-.fade    { animation: fade var(--dur-ui) var(--ease-out) both; animation-delay: var(--d, 0ms); }
-.settle  { animation: settle 520ms var(--ease-out) both; }
-.drawn   { transform-origin: left; animation: draw var(--dur-editorial) var(--ease-out) both; animation-delay: var(--d, 0ms); }
+/* Opening moments only (Studio hero). */
+.rise  { animation: rise var(--dur-spatial) var(--ease-out) both; animation-delay: var(--d, 0ms); }
+.fade  { animation: fade var(--dur-ui) var(--ease-out) both; animation-delay: var(--d, 0ms); }
+.drawn { transform-origin: left; animation: draw var(--dur-spatial) var(--ease-out) both; animation-delay: var(--d, 0ms); }
 
-/* Scroll reveal: elements start hidden only when JS has marked the page. */
-.js .reveal { opacity: 0; transform: translateY(14px);
-  transition: opacity var(--dur-editorial) var(--ease-out), transform var(--dur-editorial) var(--ease-out);
-  transition-delay: var(--d, 0ms); }
-.js .reveal.in { opacity: 1; transform: none; }
-.js .reveal-mask { clip-path: inset(100% 0 0 0); transition: clip-path 1100ms var(--ease-out); transition-delay: var(--d, 0ms); }
-.js .reveal-mask.in { clip-path: inset(0 0 0 0); }
+/* Photographs unmask once, from the bottom, when first seen. Content is in the DOM regardless. */
+.js .mask { clip-path: inset(100% 0 0 0); transition: clip-path var(--dur-spatial) var(--ease-out); transition-delay: var(--d, 0ms); }
+.js .mask.in { clip-path: inset(0 0 0 0); }
+/* Chapter rules draw across once when the chapter is reached. */
+.js .rule-draw { transform: scaleX(0); transform-origin: left; transition: transform var(--dur-spatial) var(--ease-out); }
+.js .rule-draw.in { transform: scaleX(1); }
 
 /* Images: crop drifts on hover, never a large scale */
 .frame { overflow: hidden; }
-.frame > .frame-inner { transition: transform 900ms var(--ease-out); transform-origin: 50% 40%; }
-a:hover .frame > .frame-inner, .group:hover .frame > .frame-inner, .group:focus-visible .frame > .frame-inner { transform: scale(1.03) translateY(-1%); }
+.frame > .frame-inner { transition: transform var(--dur-spatial) var(--ease-out); transform-origin: 50% 40%; }
+a:hover .frame > .frame-inner, .group:hover .frame > .frame-inner, .group:focus-visible .frame > .frame-inner { transform: scale(1.02) translateY(-0.5%); }
 
-/* Page transition: a quiet chapter numeral, never blocks input */
-.page-curtain { position: fixed; inset: 0; z-index: 60; pointer-events: none; background: var(--ivory);
-  display: grid; place-items: center; animation: curtain 900ms var(--ease-soft) both; }
-.page-curtain > div { animation: numeral-in 500ms var(--ease-out) 60ms both; text-align: center; }
-.page-enter { animation: rise 700ms var(--ease-out) 120ms both; }
+/* View transitions: shared portrait morphs, the header stays put, the rest crossfades. */
+::view-transition { pointer-events: none; }
+::view-transition-old(root) { animation: 140ms var(--ease-soft) both vt-out; }
+::view-transition-new(root) { animation: var(--dur-ui) var(--ease-out) 60ms both vt-in; }
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; } }
+::view-transition-group(.morph) { animation-duration: var(--dur-spatial); animation-timing-function: var(--ease-out); }
+::view-transition-image-pair(.morph) { isolation: isolate; }
+::view-transition-old(.morph), ::view-transition-new(.morph) { height: 100%; object-fit: cover; }
+/* The client's title: present at once above the travelling portrait, gone quickly when leaving. */
+::view-transition-new(client-name) { animation: none; }
+::view-transition-old(client-name) { animation: 140ms var(--ease-soft) both vt-out; }
+::view-transition-group(site-header) { animation: none; z-index: 100; }
+::view-transition-old(site-header) { display: none; }
+::view-transition-new(site-header) { animation: none; }
 
-/* Buttons keep a moderate radius; never pills */
-.btn { display: inline-flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; padding: 0 1.25rem;
-  border: 1px solid var(--ink); border-radius: 3px; background: transparent; color: var(--ink);
-  transition: background var(--dur-feedback) var(--ease-soft), color var(--dur-feedback) var(--ease-soft); cursor: pointer; }
+@layer components {
+/* ---------------- Controls ---------------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.75rem; min-height: 2.75rem; padding: 0 1.25rem;
+  border: 1px solid var(--ink); border-radius: var(--radius); background: transparent; color: var(--ink);
+  font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 500; cursor: pointer; text-align: center;
+  transition: background var(--dur-feedback) var(--ease-soft), color var(--dur-feedback) var(--ease-soft), border-color var(--dur-feedback) var(--ease-soft); }
 .btn:hover { background: var(--ink); color: var(--ivory); }
+.btn:active { background: var(--charcoal); border-color: var(--charcoal); color: var(--ivory); }
 .btn-solid { background: var(--ink); color: var(--ivory); }
-.btn-solid:hover { background: var(--charcoal); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-solid:hover { background: var(--charcoal); border-color: var(--charcoal); }
+.btn-quiet { border-color: transparent; padding: 0 0.25rem; }
+.btn-quiet:hover, .btn-quiet:active { background: transparent; color: var(--ink); border-color: transparent; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.btn[aria-busy="true"] { cursor: progress; }
+.on-dark .btn { border-color: var(--ivory); color: var(--ivory); }
+.on-dark .btn:hover { background: var(--ivory); color: var(--ink); }
 
-/* Reveal slider: native range input laid over the image, so drag + keys just work */
+.field-input { display: block; width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--rule-strong); border-radius: 0;
+  padding: 0.6rem 0; color: var(--ink); font: inherit; font-size: 1rem; line-height: 1.5;
+  transition: border-color var(--dur-feedback) var(--ease-soft), box-shadow var(--dur-feedback) var(--ease-soft); }
+.field-input::placeholder { color: var(--text-muted); opacity: 0.8; }
+.field-input:hover { border-bottom-color: var(--ink); }
+.field-input:focus-visible { outline: none; border-bottom-color: var(--cordovan); box-shadow: 0 1px 0 0 var(--cordovan); }
+.field-input:disabled { opacity: 0.5; cursor: not-allowed; }
+.field-input[aria-invalid="true"] { border-bottom-color: var(--danger); box-shadow: 0 1px 0 0 var(--danger); }
+.field-input.is-valid { border-bottom-color: var(--positive); }
+/* A field set in the display serif: the palette input, the consultation question. */
+.field-display { font-family: var(--font-display), serif; font-size: 1.5rem; line-height: 1.25; }
+select.field-input { appearance: none; padding-right: 1.75rem; cursor: pointer; text-overflow: ellipsis;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-size: 5px 5px, 5px 5px; background-position: calc(100% - 9px) 55%, calc(100% - 4px) 55%; background-repeat: no-repeat; }
+
+/* A select that reads as a label: used for the chapter picker. */
+.select-quiet { appearance: none; background-color: transparent; border: 0; border-radius: 0; color: var(--ink); cursor: pointer;
+  font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 500; padding: 0.6rem 1.35rem 0.6rem 0;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-size: 4px 4px, 4px 4px; background-position: calc(100% - 7px) 52%, calc(100% - 3px) 52%; background-repeat: no-repeat; }
+}
+
+/* Native dialog: one motion for drawers, one for centred dialogs. */
+dialog { color: var(--ink); }
+dialog::backdrop { background: rgb(23 21 18 / 0); transition: background var(--dur-panel) var(--ease-soft), overlay var(--dur-panel) allow-discrete, display var(--dur-panel) allow-discrete; }
+dialog[open]::backdrop { background: rgb(23 21 18 / 0.4); }
+@starting-style { dialog[open]::backdrop { background: rgb(23 21 18 / 0); } }
+dialog.drawer { translate: 100% 0; transition: translate var(--dur-panel) var(--ease-out), overlay var(--dur-panel) allow-discrete, display var(--dur-panel) allow-discrete; }
+dialog.drawer[open] { translate: 0 0; }
+@starting-style { dialog.drawer[open] { translate: 100% 0; } }
+dialog.sheet { opacity: 0; translate: 0 -6px; transition: opacity var(--dur-ui) var(--ease-out), translate var(--dur-ui) var(--ease-out), overlay var(--dur-ui) allow-discrete, display var(--dur-ui) allow-discrete; }
+dialog.sheet[open] { opacity: 1; translate: 0 0; }
+@starting-style { dialog.sheet[open] { opacity: 0; translate: 0 -6px; } }
+
+/* Compare slider: native range input laid over the image, so drag + keys just work */
 .compare-range { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
 .compare-wrap:focus-within .compare-handle { outline: 2px solid var(--cordovan); outline-offset: 3px; }
 
@@ -137,26 +237,70 @@ a:hover .frame > .frame-inner, .group:hover .frame > .frame-inner, .group:focus-
 .cursor-label { position: fixed; z-index: 70; pointer-events: none; left: 0; top: 0;
   transition: opacity var(--dur-feedback) var(--ease-soft); }
 
-dialog::backdrop { background: rgba(23, 21, 18, 0.38); }
+/* The connector line between a marker and its note draws once per selection. */
+.connector { stroke-dasharray: 1; animation: connect var(--dur-spatial) var(--ease-out) both; }
+@keyframes connect { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 
-/* Focus: visible, quiet */
-:focus-visible { outline: 1.5px solid var(--cordovan); outline-offset: 4px; border-radius: 2px; }
+/* Focus: always visible, quiet. */
+:focus-visible { outline: 2px solid var(--cordovan); outline-offset: 3px; border-radius: 1px; }
 .on-dark :focus-visible { outline-color: var(--ivory); }
+.focus-inset:focus-visible { outline-offset: -3px; }
 
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-@media (prefers-reduced-motion: reduce) {
-  .rise, .fade, .settle, .drawn, .page-enter { animation: fade 150ms linear both; animation-delay: 0ms; }
-  .page-curtain { display: none; }
-  .js .reveal, .js .reveal-mask { opacity: 1; transform: none; clip-path: none; transition: none; }
-  .frame > .frame-inner { transition: none; transform: none !important; }
-  * { scroll-behavior: auto !important; }
+@layer components {
+/* Hit area: grow the target without growing the layout. The element must already be positioned
+   (relative or absolute); this class deliberately sets no position or display, because unlayered
+   custom classes beat Tailwind's utilities and would silently override them. */
+.hit::after { content: ""; position: absolute; inset: -0.8rem -0.75rem; }
+@media (pointer: coarse) {
+  .tap { min-height: 2.75rem; min-width: 2.75rem; }
 }
 
-@media (max-width: 639px) { .display-xl { font-size: 14.6vw; } }
+/* Photographs share one finish: a fine grain and a soft falloff at the edges, light enough not to dull the
+   graded photograph beneath it. The page itself carries no texture; the pictures do. */
+.photo { position: relative; overflow: hidden; background: var(--paper); }
+.photo::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(130% 95% at 50% 38%, transparent 66%, rgb(23 21 18 / 0.06) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .16  0 0 0 0 .13  0 0 0 0 .1  0 0 0 .26 -.1'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply; }
+
+/* Forced states: specimens for /design-lab only. Real controls use the pseudo-classes above. */
+.btn.is-hover { background: var(--ink); color: var(--ivory); }
+.btn-solid.is-hover { background: var(--charcoal); border-color: var(--charcoal); }
+.btn-quiet.is-hover { background: transparent; color: var(--ink); }
+.btn.is-active { background: var(--charcoal); border-color: var(--charcoal); color: var(--ivory); }
+.btn-quiet.is-active { background: transparent; color: var(--ink); border-color: transparent; }
+.is-focus { outline: 2px solid var(--cordovan); outline-offset: 3px; }
+.on-dark .is-focus { outline-color: var(--ivory); }
+.field-input.is-hover { border-bottom-color: var(--ink); }
+.field-input.is-focus { outline: none; border-bottom-color: var(--cordovan); box-shadow: 0 1px 0 0 var(--cordovan); }
+
+/* Skeletons are still on purpose: nothing pulses. */
+.skeleton { background: var(--paper); border-radius: var(--radius); }
+}
+
+/* ---------------- Reduced motion ----------------
+   Transforms, reveals and view transitions go; state changes stay legible (instant). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; transition-delay: 0ms !important; scroll-behavior: auto !important; }
+  .js .mask, .js .rule-draw { clip-path: none; transform: none; }
+  .frame > .frame-inner { transform: none !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 0s !important; animation-delay: 0s !important; }
+}
+/* The same rules, applied on demand to a subtree (used by /design-lab to demonstrate them). */
+.motion-reduced *, .motion-reduced *::before, .motion-reduced *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; transition-delay: 0ms !important; }
+.motion-reduced .frame > .frame-inner { transform: none !important; }
+
+@media (max-width: 639px) {
+  .display-xl { font-size: 14.6vw; }
+}
 
 /* Legacy classes used by the Phase 1 concept pages (/concepts/*) */
-.anim-fade-up { animation: rise var(--dur-editorial) var(--ease-out) both; }
+.anim-fade-up { animation: rise var(--dur-spatial) var(--ease-out) both; }
 .anim-fade-in { animation: fade var(--dur-ui) var(--ease-out) both; }
 .anim-draw { transform-origin: left; animation: draw var(--dur-ui) var(--ease-out) both; }
