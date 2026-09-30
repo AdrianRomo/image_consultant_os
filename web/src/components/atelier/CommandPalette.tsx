@@ -11,6 +11,7 @@ const commands: Command[] = [
   ...chapters
     .filter((c) => ["presence", "assessment", "opportunities", "evolution"].includes(c.id))
     .map((c) => ({ id: `ch-${c.id}`, label: `Marisol · ${c.sub}`, hint: c.label, href: `/clients/marisol#${c.id}` })),
+  { id: "preview", label: "Preview what Marisol sees", hint: "Client view", href: "/clients/marisol/preview" },
   { id: "wardrobe", label: "Wardrobe", hint: "Pieces", href: "/wardrobe" },
   { id: "looks", label: "Compose a look", hint: "Looks", href: "/looks" },
   ...consultations.map((c) => ({ id: c.id, label: c.prompt, hint: "Ask", href: `/looks?ask=${c.id}` })),

@@ -1,6 +1,7 @@
 "use client";
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { consultations, itemById, looks, readLook, slots, wardrobe, type Slot } from "@/lib/atelier";
+import { consultations, itemById, looks, nearestPaletteColour, piecesOf, readLook, slots, wardrobe, type Slot } from "@/lib/atelier";
 import { Garment } from "./Garment";
 import { Label } from "./primitives";
 import { Field, Tabs } from "./ui/controls";
@@ -42,6 +43,9 @@ export function LookStudio({ initialAsk, initialLook, initialAdd }: { initialAsk
   const title = consult ? consult.prompt : startLook.title;
 
   const reading = useMemo(() => readLook(items), [items]);
+  // The composition is a saved look while it holds exactly that look's pieces; then its occasion is the context.
+  const saved = looks.find((l) => Object.keys(place).every((k) => l.items[k as Slot] === items[k as Slot]));
+  const pieces = piecesOf(items);
   const refinement = consult?.refinements.find((r) => r.id === refine);
   const chosen = Object.values(items).map((id) => itemById(id!)!).filter(Boolean);
 
@@ -100,6 +104,37 @@ export function LookStudio({ initialAsk, initialLook, initialAdd }: { initialAsk
             )}
             {chosen.length > 0 && <p className="label tone-muted absolute bottom-3 left-4">{title}</p>}
           </div>
+
+          {/* The pieces, by name: the picture shows the whole, this says exactly what is in it and opens each piece. */}
+          {pieces.length > 0 && (
+            <section aria-labelledby="pieces-h" className="mt-8">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+                <h2 id="pieces-h" className="label tone-ink">In this look</h2>
+                {saved && !consult && <p className="meta">{saved.occasion} · {saved.audienceNote}</p>}
+              </div>
+              <ol className="mt-3 border-b border-ink/15">
+                {pieces.map((p, i) => {
+                  const near = nearestPaletteColour(p.color);
+                  return (
+                    <li key={p.id} className="list-none border-t border-ink/15">
+                      <Link href={`/wardrobe?item=${p.id}`} className="group focus-inset grid grid-cols-[1.75rem_1fr_auto] items-baseline gap-x-3 py-3.5" aria-label={`${p.name}. View the piece in the wardrobe.`}>
+                        <span className="numeral tone-muted text-lg" aria-hidden>{i + 1}</span>
+                        <span className="min-w-0">
+                          <span className="block break-words text-[0.95rem]"><span className="travel">{p.name}</span></span>
+                          <span className="meta flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                            <span className="inline-flex items-center gap-2"><span className="inline-block h-3 w-3 rounded-full border border-ink/20" style={{ background: p.color }} aria-hidden />{slots.find((s) => s.id === p.slot)!.label}</span>
+                            {p.inPalette && <span>Near {near.name.toLowerCase()}</span>}
+                            {!p.inPalette && p.slot !== "watch" && <span className="tone-accent">Outside her palette</span>}
+                          </span>
+                        </span>
+                        <span aria-hidden className="transition-transform duration-[var(--dur-ui)] group-hover:translate-x-1">→</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          )}
         </div>
 
         {/* ------------------------------------------------ Consultation */}

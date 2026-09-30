@@ -57,7 +57,7 @@ export function ObservationList({
       {observations.map((o, i) => {
         const open = selectedId === o.id;
         return (
-          <li key={o.id} className="border-b border-ink/15" data-anchor={o.id}>
+          <li key={o.id} className="border-b border-ink/15" data-anchor={o.id} id={`observation-${o.id}`}>
             <h4 className="m-0 font-normal">
               <button
                 onClick={() => onSelect(o.id)} aria-expanded={open} aria-controls={`obs-${o.id}`}
@@ -113,7 +113,7 @@ export function FocusWindow({
   const x = clamp(0.5 / ZOOM - at.x / 100, (1 - ZOOM) / ZOOM, 0);
   const y = clamp(winH / 2 / imgH - at.y / 100, (winH - imgH) / imgH, 0);
   return (
-    <div className={`bg-ivory pb-3 pt-2 ${className}`}>
+    <div data-focus-window className={`bg-ivory pb-3 pt-2 ${className}`}>
       <div
         role="img" aria-label={`Detail of the photograph, framed on observation ${i + 1}: ${o.title}`}
         className="photo relative w-full"

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Portrait, PortraitPlaceholder } from "@/components/atelier/Portrait";
 import { Label, Marker, Spectrum } from "@/components/atelier/primitives";
-import { AnnotationDemo, ControlsDemo, MotionDemo, OverlaysDemo, PatternsDemo, StatesDemo } from "@/components/lab/LabDemos";
+import { AnnotationDemo, ControlsDemo, MotionDemo, OverlaysDemo, PatternsDemo, ShareDemo, StatesDemo } from "@/components/lab/LabDemos";
 import { contrast, grade } from "@/lib/color";
 import { season } from "@/lib/atelier";
 import { Button } from "@/components/atelier/ui/controls";
@@ -67,7 +67,7 @@ function Section({ n, label, title, intro, children }: { n: string; label: strin
 }
 
 export default function DesignLab() {
-  const toc = ["Principles", "Typography", "Colour", "Space and rules", "Motion", "Controls", "Photography", "Patterns", "Navigation", "Overlays", "States", "Focus", "Accessibility"];
+  const toc = ["Principles", "Typography", "Colour", "Space and rules", "Motion", "Controls", "Photography", "Patterns", "Client view", "Navigation", "Overlays", "States", "Focus", "Accessibility"];
   return (
     <main id="main" className="mx-auto max-w-[1600px] px-[var(--gutter)] pb-10 pt-[calc(var(--header-h)+2.5rem)]">
       <header>
@@ -227,7 +227,12 @@ export default function DesignLab() {
       </Section>
 
       {/* 09 ------------------------------------------------------------ */}
-      <Section n="09" label="Navigation" title={<>The software recedes. <span className="italic-serif">The client is the context.</span></>} intro="Outside a client, a quiet header with four places and search. Inside one, the shell steps aside: one way back, her name, a chapter rail on wide screens and a chapter picker on small ones. Below, the real routes at 390px.">
+      <Section n="09" label="Client view" title={<>What a client sees, <span className="italic-serif">and only that.</span></>} intro="Sharing is deliberate. A recommendation reaches the client only when it is approved and shared, and the page she opens is built from a whitelist, not from the consultant’s records with things hidden. Two questions are kept apart: where a recommendation is, and who can see it.">
+        <ShareDemo />
+      </Section>
+
+      {/* 10 ------------------------------------------------------------ */}
+      <Section n="10" label="Navigation" title={<>The software recedes. <span className="italic-serif">The client is the context.</span></>} intro="Outside a client, a quiet header with four places and search. Inside one, the shell steps aside: one way back, her name, a chapter rail on wide screens and a chapter picker on small ones. Below, the real routes at 390px.">
         <div className="flex flex-wrap items-start gap-x-10 gap-y-10">
           {[["/", "Studio"], ["/clients/marisol", "Client dossier"]].map(([src, t]) => (
             <figure key={src} className="m-0">
@@ -238,18 +243,18 @@ export default function DesignLab() {
         </div>
       </Section>
 
-      {/* 10 ------------------------------------------------------------ */}
-      <Section n="10" label="Overlays" title={<>Drawers and dialogs, <span className="italic-serif">native and quiet.</span></>}>
+      {/* 11 ------------------------------------------------------------ */}
+      <Section n="11" label="Overlays" title={<>Drawers and dialogs, <span className="italic-serif">native and quiet.</span></>}>
         <OverlaysDemo />
       </Section>
 
       {/* 11 ------------------------------------------------------------ */}
-      <Section n="11" label="States" title={<>Empty, saved, failed, <span className="italic-serif">still in voice.</span></>} intro="Every state speaks like the rest of the product: first person, calm, specific about what to do next.">
+      <Section n="12" label="States" title={<>Empty, saved, failed, <span className="italic-serif">still in voice.</span></>} intro="Every state speaks like the rest of the product: first person, calm, specific about what to do next.">
         <StatesDemo />
       </Section>
 
       {/* 12 ------------------------------------------------------------ */}
-      <Section n="12" label="Focus" title={<>Always visible, <span className="italic-serif">never loud.</span></>} intro="A 2px cordovan ring with a 3px offset on ivory; ivory on ink. Fields thicken their underline instead of ringing the box. Rows and images that are entirely links use an inset ring.">
+      <Section n="13" label="Focus" title={<>Always visible, <span className="italic-serif">never loud.</span></>} intro="A 2px cordovan ring with a 3px offset on ivory; ivory on ink. Fields thicken their underline instead of ringing the box. Rows and images that are entirely links use an inset ring.">
         <div className="flex flex-wrap items-center gap-x-10 gap-y-6">
           <a href="#focus" className="label tone-ink is-focus inline-block py-2">Link</a>
           <Button className="is-focus">Button</Button>
@@ -259,7 +264,7 @@ export default function DesignLab() {
       </Section>
 
       {/* 13 ------------------------------------------------------------ */}
-      <Section n="13" label="Accessibility" title={<>Beauty may not <span className="italic-serif">cost usability.</span></>}>
+      <Section n="14" label="Accessibility" title={<>Beauty may not <span className="italic-serif">cost usability.</span></>}>
         <ul className="grid gap-x-10 gap-y-3 md:grid-cols-2">
           {[
             "Every interactive element is reachable and operable by keyboard; focus is always visible.",

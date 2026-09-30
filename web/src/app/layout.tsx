@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Cormorant_Garamond, Bricolage_Grotesque, Inter } from "next/font/google";
 import "./globals.css";
-import { SiteNav } from "@/components/atelier/SiteNav";
-import { CursorLabel } from "@/components/atelier/CursorLabel";
-import { CommandPalette } from "@/components/atelier/CommandPalette";
 
 const playfair = Playfair_Display({ variable: "--font-playfair", subsets: ["latin"] });
 const cormorant = Cormorant_Garamond({ variable: "--font-cormorant", subsets: ["latin"], weight: ["300", "400", "500", "600"], style: ["normal", "italic"] });
@@ -27,10 +24,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col">
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[80] focus:bg-ink focus:px-3 focus:py-2 focus:text-ivory">Skip to content</a>
-        <SiteNav />
+        {/* The consultant's chrome (header, search, cursor label) lives in the (studio) group's layout, so the
+            client-facing (share) group carries none of it: not in the markup, and not in its JavaScript. */}
         {children}
-        <CommandPalette />
-        <CursorLabel />
       </body>
     </html>
   );

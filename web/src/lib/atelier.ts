@@ -20,6 +20,10 @@ export type WardrobeItem = {
   inPalette: boolean;
   worn: string; // last worn, plain language
   note: string; // consultant's one-liner
+  // Where this piece meets the advice, when the fixture says so: the recommendation it is a candidate for,
+  // or the observation that is about it.
+  rec?: string;
+  obs?: string;
   // Composition on the wide contact sheet: 12-col grid position.
   layout: { row: number; col: number; span: number; mt: number; ratio: string; tilt?: number };
 };
@@ -36,7 +40,7 @@ export const slots: { id: Slot; label: string }[] = [
 export const wardrobe: WardrobeItem[] = [
   { id: "w-ink-blazer", name: "Ink structured blazer", kind: "blazer", slot: "outer", category: "Outerwear",
     color: "#232833", colorName: "Ink", season: "All year", structure: "high", inPalette: true,
-    worn: "Worn 9 times", note: "The piece the board will remember. Keep the shoulder line.",
+    worn: "Worn 9 times", note: "The piece the board will remember. Keep the shoulder line.", rec: "rec-1",
     layout: { row: 1, col: 1, span: 4, mt: 0, ratio: "4/5" } },
   { id: "w-rust-blouse", name: "Rust silk blouse", kind: "shirt", slot: "top", category: "Tops",
     color: "#a4532f", colorName: "Rust", season: "Autumn / Winter", structure: "medium", inPalette: true,
@@ -70,7 +74,7 @@ export const wardrobe: WardrobeItem[] = [
     layout: { row: 3, col: 5, span: 3, mt: 6, ratio: "3/4" } },
   { id: "w-olive-blazer", name: "Olive wool blazer", kind: "blazer", slot: "outer", category: "Outerwear",
     color: "#5d6238", colorName: "Olive", season: "Autumn / Winter", structure: "high", inPalette: true,
-    worn: "Worn 3 times", note: "Approachable authority. For the regional team.",
+    worn: "Worn 3 times", note: "Approachable authority. For the regional team.", rec: "rec-1",
     layout: { row: 3, col: 9, span: 4, mt: 1, ratio: "4/5" } },
 
   { id: "w-cognac-loafers", name: "Cognac loafers", kind: "loafer", slot: "shoes", category: "Shoes",
@@ -83,7 +87,7 @@ export const wardrobe: WardrobeItem[] = [
     layout: { row: 4, col: 7, span: 3, mt: 4.5, ratio: "1/1", tilt: 1 } },
   { id: "w-grey-cardigan", name: "Grey open cardigan", kind: "cardigan", slot: "top", category: "Tops",
     color: "#b3aea4", colorName: "Cool grey", season: "All year", structure: "low", inPalette: false,
-    worn: "Worn 12 times", note: "Worn most, flatters least. The shoulder collapses on camera.",
+    worn: "Worn 12 times", note: "Worn most, flatters least. The shoulder collapses on camera.", obs: "obs-1",
     layout: { row: 4, col: 11, span: 2, mt: 0, ratio: "4/5", tilt: -1 } },
   { id: "w-charcoal-knit", name: "Charcoal fine knit", kind: "knit", slot: "top", category: "Tops",
     color: "#3d3b38", colorName: "Charcoal", season: "Autumn / Winter", structure: "low", inPalette: true,
@@ -93,6 +97,43 @@ export const wardrobe: WardrobeItem[] = [
 
 export const itemById = (id: string) => wardrobe.find((w) => w.id === id);
 export const categories: ("All" | Category)[] = ["All", "Outerwear", "Tops", "Trousers", "Shoes", "Accessories"];
+
+// ---------------------------------------------------------------- Relations between pieces and looks
+// Derived from `looks`, never stored twice, so a piece and a look can never disagree about each other.
+
+/** The pieces of a look, in the order a person dresses: outer layer to watch. */
+export const piecesOf = (items: Partial<Record<Slot, string>>): WardrobeItem[] =>
+  slots.map((s) => (items[s.id] ? itemById(items[s.id]!) : undefined)).filter((w): w is WardrobeItem => !!w);
+
+/** The looks a piece appears in. */
+export const looksWith = (itemId: string): Look[] => looks.filter((l) => Object.values(l.items).includes(itemId));
+
+/** The other pieces worn with this one, across its looks, without repeats. */
+export const wornWith = (itemId: string): WardrobeItem[] => {
+  const seen = new Set<string>();
+  for (const l of looksWith(itemId)) for (const p of piecesOf(l.items)) if (p.id !== itemId) seen.add(p.id);
+  return [...seen].map((id) => itemById(id)!);
+};
+
+// Nearness in CIELAB, which follows how colours look, not how many units apart their channels are (in plain RGB a
+// warm cognac sits closer to olive green than to rust). Says "nearest", never "matches".
+const lab = (hex: string): [number, number, number] => {
+  const n = parseInt(hex.slice(1), 16);
+  const lin = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+  const [x, y, z] = [
+    (0.4124 * lin[0] + 0.3576 * lin[1] + 0.1805 * lin[2]) / 0.95047,
+    0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2],
+    (0.0193 * lin[0] + 0.1192 * lin[1] + 0.9505 * lin[2]) / 1.08883,
+  ];
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+};
+/** The palette colour closest to a garment's own colour. */
+export function nearestPaletteColour(hex: string) {
+  const [l, a, b] = lab(hex);
+  const dist = (h: string) => { const [pl, pa, pb] = lab(h); return (pl - l) ** 2 + (pa - a) ** 2 + (pb - b) ** 2; };
+  return season.colors.reduce((best, c) => (dist(c.hex) < dist(best.hex) ? c : best));
+}
 
 // ---------------------------------------------------------------- Colour
 
@@ -147,21 +188,23 @@ export type StudioClient = {
   initials: string;
   focus: string;
   last: string;
-  status?: "Analysis ready" | "Draft to review";
+  status?: "Analysis ready"; // a client-level status; recommendation state is derived from the live records (today.ts)
   href?: string;
   hasPortrait: boolean;
 };
 
 export const studioClients: StudioClient[] = [
-  { slug: "marisol", name: "Marisol Vega Ortiz", initials: "MV", focus: "Executive presence", last: "Last session · 2 days ago", status: "Draft to review", href: "/clients/marisol", hasPortrait: true },
+  { slug: "marisol", name: "Marisol Vega Ortiz", initials: "MV", focus: "Executive presence", last: "Last session · 2 days ago", href: "/clients/marisol", hasPortrait: true },
   { slug: "lucia", name: "Lucía Herrera", initials: "LH", focus: "Wardrobe refinement", last: "Last session · 6 days ago", hasPortrait: false },
   { slug: "diego", name: "Diego Flores", initials: "DF", focus: "Personal branding", last: "Observations complete", status: "Analysis ready", hasPortrait: false },
 ];
 
-export const upcoming = [
-  { when: "Tue 17 March", what: "Fitting · structured jacket", who: "Marisol Vega Ortiz" },
-  { when: "Thu 19 March", what: "Session 3 · Presence under challenge", who: "Marisol Vega Ortiz" },
-  { when: "Mon 23 March", what: "Colour review", who: "Lucía Herrera" },
+// Dates are ISO days in the studio's calendar (clock.ts). `slug` links to a dossier when one is built.
+export type Appointment = { on: string; what: string; who: string; slug?: string };
+export const upcoming: Appointment[] = [
+  { on: "2026-03-17", what: "Fitting · structured jacket", who: "Marisol Vega Ortiz", slug: "marisol" },
+  { on: "2026-03-19", what: "Session 3 · Presence under challenge", who: "Marisol Vega Ortiz", slug: "marisol" },
+  { on: "2026-03-23", what: "Colour review", who: "Lucía Herrera" },
 ];
 
 // ---------------------------------------------------------------- Looks
