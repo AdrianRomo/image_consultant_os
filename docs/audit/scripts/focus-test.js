@@ -1,0 +1,12 @@
+const L = require("./lib"); const base = process.argv[2], out = process.argv[3];
+(async () => { const b = await L.launch(); const p = await L.newPage(b, { w: 390, h: 844 });
+  await L.go(p, base + "/clients/marisol", 900);
+  await p.evaluate(() => document.getElementById("assessment").scrollIntoView()); await p.evaluate(() => window.scrollBy(0, -20)); await p.waitForTimeout(900);
+  await p.screenshot({ path: out + "/focus-1.png" });
+  await p.click("#obs-obs-2", { force: true }).catch(() => {});
+  await p.click("button[aria-controls='obs-obs-3']"); await p.waitForTimeout(900);
+  await p.screenshot({ path: out + "/focus-3.png" });
+  await p.evaluate(() => window.scrollBy(0, 420)); await p.waitForTimeout(500);
+  await p.screenshot({ path: out + "/focus-scrolled.png" });
+  const sticky = await p.evaluate(() => { const w = document.querySelector("[role=img][aria-label^='Detail']").parentElement.getBoundingClientRect(); return { top: Math.round(w.top), h: Math.round(w.height), vh: innerHeight }; });
+  console.log(JSON.stringify(sticky), "errors:", p._errors.length ? p._errors : "none"); await b.close(); })();
