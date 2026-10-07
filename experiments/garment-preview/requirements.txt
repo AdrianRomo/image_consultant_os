@@ -1,0 +1,8 @@
+torch
+torchvision
+fashn-human-parser==0.1.1
+numpy
+Pillow
+scipy
+scikit-image
+pytest
