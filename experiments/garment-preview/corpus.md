@@ -43,3 +43,16 @@ from looking at contact sheets (thumbnails, one reviewer): a judgement, not grou
 
 Totals: 14 usable as they are (8 clean, 6 minor), 8 layered, 2 bad. The flag caught 8 of the 10 layered or bad masks and
 none of the 14 usable ones. The threshold (0.04) was tuned on these same photographs, so treat it as indicative.
+
+## After layer selection (2026-10-07)
+
+One positive click per photo (`layers.json`), on the 10 layered or bad photos above:
+
+| Photo (id) | Result |
+| --- | --- |
+| 12311581, 20411585, 30479371, 9161849, 1792828, 6787553 | **fixed**: outer layer recoloured, shirt / tee / knit untouched |
+| 10228177, 5092526 | **fixed** (the two the mixed-colour flag missed): cuffs and collar now stay as they were; a few speckles near the hand in 5092526 |
+| 36211841 | **partly**: the curtain is no longer recoloured, but the dress is still blotchy because the parser left holes in it; unstable between clicks |
+| 9393440 | **better, warned**: scarf untouched, velvet recoloured; the click landed outside the chosen layer, so the tool says so |
+
+Run: `python eval_clicks.py raw layers.json` (click stability and 120 wild clicks).

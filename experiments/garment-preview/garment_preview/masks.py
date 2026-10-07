@@ -52,11 +52,15 @@ def build_masks(
     erode_px: int | None = None,
     feather_px: float | None = None,
     min_piece: float = 0.02,
+    restrict: np.ndarray | None = None,
 ) -> Masks:
     """`garment` is a key of `labels.GARMENTS`. Pixel radii default to a fraction of the image width.
 
     `guard_px` is the margin kept around face, hair, glasses, jewellery and hat; `body_guard_px` the narrower one
-    around the rest of the skin and the bag."""
+    around the rest of the skin and the bag.
+
+    `restrict` (bool HxW, e.g. one layer chosen with a click) can only NARROW the edit: it is intersected with the
+    garment mask, so whatever produced it can never widen an edit onto the person or the background."""
     if garment not in labels.GARMENTS:
         raise ValueError(f"unknown garment {garment!r}; choose from {sorted(labels.GARMENTS)}")
     width = label_map.shape[1]
@@ -66,11 +70,15 @@ def build_masks(
     feather_px = max(0.5, width * 0.0015) if feather_px is None else feather_px
 
     wanted = np.isin(label_map, labels.GARMENTS[garment])
+    if restrict is not None and restrict.shape != wanted.shape:
+        raise ValueError("restrict must match the label map's size")
     sacred = np.isin(label_map, labels.SACRED)
     # Subtract the person (grown by a margin that is wide for identity, narrow for body skin), then pull the edge
     # in a little so the soft edge never reaches the boundary the parser drew.
     keep_out = _grow(np.isin(label_map, labels.IDENTITY), guard_px) | _grow(np.isin(label_map, labels.BODY), body_guard_px)
     hard = wanted & ~keep_out & ~sacred
+    if restrict is not None:
+        hard &= restrict
     if erode_px:
         hard = ndi.binary_erosion(hard, structure=_disk(erode_px))
     hard = _drop_specks(hard, min_piece)

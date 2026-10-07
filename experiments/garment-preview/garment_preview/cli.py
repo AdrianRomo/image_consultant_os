@@ -18,6 +18,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from . import labels as L
+from .layers import Segmenter, garment_at
 from .masks import build_masks, pick_garment
 from .parse import Parser, load_rgb
 from .recolor import parse_hex, recolor
@@ -35,16 +36,22 @@ def _panel(arr: np.ndarray, caption: str) -> Image.Image:
     return canvas
 
 
-def _sheet(src, masks, out, report, hex_) -> Image.Image:
+def _sheet(src, masks, out, report, hex_, clicks=()) -> Image.Image:
     tint = src.copy()
     live = masks.alpha > 0
     tint[live] = (0.5 * tint[live] + 0.5 * np.array([220, 60, 60])).astype(np.uint8)
     tint[masks.sacred & ~live] = (0.75 * tint[masks.sacred & ~live] + 0.25 * np.array([60, 120, 220])).astype(np.uint8)
+    marked = Image.fromarray(tint)
+    draw, r = ImageDraw.Draw(marked), max(6, src.shape[1] // 60)
+    for fx, fy, positive in clicks:
+        cx, cy = fx * (src.shape[1] - 1), fy * (src.shape[0] - 1)
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(60, 200, 90) if positive else (255, 255, 255), outline=(0, 0, 0), width=max(2, r // 4))
+    tint = np.asarray(marked)
     changed = np.where(np.any(src != out, axis=2)[..., None], 255, 0).astype(np.uint8).repeat(3, axis=2)
     verdict = "OK" if report.ok else "FAIL"
     panels = [
         _panel(src, "original"),
-        _panel(tint, "red = may change, blue = person (protected)"),
+        _panel(tint, "red = may change, blue = person; green = clicked layer, white = avoid" if clicks else "red = may change, blue = person (protected)"),
         _panel(out, f"{hex_}  dE2000 {report.delta_e2000}  {verdict}"),
         _panel(changed, f"changed pixels: {int(np.any(src != out, axis=2).sum())}  on the person: {report.sacred_changed}"),
     ]
@@ -56,6 +63,14 @@ def _sheet(src, masks, out, report, hex_) -> Image.Image:
     return sheet
 
 
+def _xy(text: str) -> tuple[float, float]:
+    try:
+        x, y = (float(v) for v in text.split(","))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r} is not 'x,y'") from None
+    return x, y
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="garment_preview")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -63,6 +78,9 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("photos", nargs="+")
     run.add_argument("--garment", choices=["auto", *sorted(L.GARMENTS)], default="top", help="auto = the largest garment found")
     run.add_argument("--target", action="append", required=True, help="hex colour; repeat for several")
+    run.add_argument("--point", action="append", type=_xy, help="click on the layer to recolour, as fractions of the photo, e.g. 0.42,0.55 (repeatable)")
+    run.add_argument("--avoid", action="append", type=_xy, help="click on a layer NOT to recolour, same format (repeatable)")
+    run.add_argument("--layers-file", help='JSON {"<photo stem>": {"point": [[x, y]], "avoid": [[x, y]]}}; wins over --point/--avoid for those photos')
     run.add_argument("--out", default="out")
     run.add_argument("--max-delta-e", type=float, default=DEFAULT_DELTA_E)
     args = ap.parse_args(argv)
@@ -70,6 +88,8 @@ def main(argv: list[str] | None = None) -> int:
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     parser = Parser()
+    segmenter = None  # loaded only when a click is given
+    layers_file = json.loads(Path(args.layers_file).read_text()) if args.layers_file else {}
     rows, failed = [], False
     for photo in args.photos:
         stem = Path(photo).stem
@@ -77,8 +97,18 @@ def main(argv: list[str] | None = None) -> int:
         t0 = time.perf_counter()
         label_map = parser.labels(src)
         t_parse = time.perf_counter() - t0
-        garment = pick_garment(label_map) if args.garment == "auto" else args.garment
-        masks = build_masks(label_map, garment)
+        entry = layers_file.get(stem, {})
+        pos = [tuple(p) for p in entry.get("point", args.point or [])]
+        neg = [tuple(p) for p in entry.get("avoid", args.avoid or [])]
+        if args.garment != "auto":
+            garment = args.garment
+        else:
+            garment = (garment_at(label_map, pos[0]) if pos else None) or pick_garment(label_map)
+        layer = None
+        if pos:
+            segmenter = segmenter or Segmenter()
+            layer = segmenter.layer(src, np.isin(label_map, L.GARMENTS[garment]), pos, neg)
+        masks = build_masks(label_map, garment, restrict=None if layer is None else layer.mask)
         Image.fromarray((masks.alpha * 255).astype(np.uint8)).save(out_dir / f"{stem}.{garment}.mask.png")
         for hex_ in args.target:
             tgt = parse_hex(hex_)
@@ -91,9 +121,11 @@ def main(argv: list[str] | None = None) -> int:
             # Verify the file that was written, not the array in memory.
             on_disk = np.asarray(Image.open(png).convert("RGB"))
             report = verify(src, on_disk, masks, tgt, max_delta_e=args.max_delta_e)
-            _sheet(src, masks, on_disk, report, hex_).save(out_dir / f"{stem}.{garment}.{tag}.sheet.jpg", quality=90)
+            _sheet(src, masks, on_disk, report, hex_, [(x, y, True) for x, y in pos] + [(x, y, False) for x, y in neg]).save(out_dir / f"{stem}.{garment}.{tag}.sheet.jpg", quality=90)
+            if layer is not None and not layer.click_inside:
+                report.warnings.append("the click is not inside the layer that was chosen: check which part changed")
             failed |= not report.ok
-            rows.append({"photo": photo, "garment": garment, "target": hex_, "parse_s": round(t_parse, 3), "edit_s": round(t_edit, 3), **report.to_dict()})
+            rows.append({"photo": photo, "garment": garment, "layer": None if layer is None else {"candidate": layer.candidate, "inside": round(layer.inside, 3), "score": round(layer.score, 3), "click_inside": layer.click_inside}, "target": hex_, "parse_s": round(t_parse, 3), "edit_s": round(t_edit, 3), **report.to_dict()})
             flag = "FAIL" if not report.ok else "LOOK" if report.warnings else "ok  "
             print(f"{flag} {stem:<12} {garment:<5} {hex_}  dE2000 {report.delta_e2000:>5}  person px changed {report.sacred_changed}  skin-like {report.skin_like_fraction}  mixed {report.mixed_fraction}  edit {t_edit:.2f}s", *report.reasons, *[f"[warn] {w}" for w in report.warnings])
     (out_dir / "report.json").write_text(json.dumps(rows, indent=2))
